@@ -85,6 +85,7 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
                     account_number = "XXXX" + match.group(1)
                     break
 
+
         # Check for duplicate statement
         existing = db.query(Statement).filter(
             Statement.bank_name == bank_name,
@@ -94,25 +95,29 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
         ).first()
 
         if existing:
-            # Delete old data and re-upload
-            db.delete(existing)
+            stmt = existing
+            # Optionally update file_name, total_credit, total_debit
+            stmt.file_name = saved_name
+            stmt.total_credit = total_credit
+            stmt.total_debit = total_debit
             db.commit()
+        else:
+            # Create statement record
+            stmt = Statement(
+                bank_name=bank_name,
+                account_number=account_number,
+                month=month,
+                year=year,
+                file_name=saved_name,
+                total_credit=total_credit,
+                total_debit=total_debit,
+            )
+            db.add(stmt)
+            db.commit()
+            db.refresh(stmt)
 
-        # Create statement record
-        stmt = Statement(
-            bank_name=bank_name,
-            account_number=account_number,
-            month=month,
-            year=year,
-            file_name=saved_name,
-            total_credit=total_credit,
-            total_debit=total_debit,
-        )
-        db.add(stmt)
-        db.commit()
-        db.refresh(stmt)
 
-        # Insert transactions
+        # Insert only new transactions (deduplicate)
         categorizer = Categorizer(db)
         txn_count = 0
         for _, row in df.iterrows():
@@ -126,6 +131,16 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
             if isinstance(txn_date, str):
                 from app.parsers.base_parser import BaseParser
                 txn_date = BaseParser.parse_date_static(txn_date)
+
+            # Deduplication: skip if transaction with same statement_id, txn_date, description, debit exists
+            exists = db.query(Transaction).filter(
+                Transaction.statement_id == stmt.id,
+                Transaction.txn_date == txn_date,
+                Transaction.description == description,
+                Transaction.debit == debit
+            ).first()
+            if exists:
+                continue
 
             category = categorizer.categorize(description)
             merchant = categorizer.extract_merchant(description)

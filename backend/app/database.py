@@ -3,13 +3,25 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
+
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./bank_analyzer.db")
+# Prefer DB_* variables for MySQL, fallback to DATABASE_URL or SQLite
+def build_database_url():
+    db_host = os.getenv("DB_HOST")
+    db_port = os.getenv("DB_PORT")
+    db_user = os.getenv("DB_USER")
+    db_pass = os.getenv("DB_PASS")
+    db_name = os.getenv("DB_NAME")
+    if all([db_host, db_port, db_user, db_pass, db_name]):
+        return f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+    return os.getenv("DATABASE_URL", "sqlite:///./bank_analyzer.db")
+
+DATABASE_URL = build_database_url()
 
 # SQLite needs connect_args={"check_same_thread": False} to be used across threads in FastAPI
 engine = create_engine(
-    DATABASE_URL, 
+    DATABASE_URL,
     connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 )
 

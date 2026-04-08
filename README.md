@@ -70,6 +70,7 @@ Perfect for personal finance management, expense tracking, and financial analysi
 - MySQL 8.0+
 - Git
 
+
 ### 1. Backend Setup
 
 ```bash
@@ -91,9 +92,13 @@ pip install -r requirements.txt
 # Configure environment
 # Copy and edit .env file with your MySQL credentials
 cp .env.example .env
+# Edit .env to set DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME
 
-# Initialize database
+# Initialize database schema (optional, Alembic preferred)
 mysql -u root -p < schema.sql
+
+# (Recommended) Run Alembic migrations to keep DB in sync with models
+alembic upgrade head
 
 # Start backend server (runs on http://localhost:8000)
 uvicorn app.main:app --reload

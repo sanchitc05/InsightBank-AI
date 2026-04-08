@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import * as api from '../api/api';
+import * as api from '../services/api';
 
 /**
  * Hook for fetching transactions

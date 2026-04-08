@@ -1,12 +1,6 @@
 import { useState, useMemo } from 'react';
 
-const CAT_COLORS = {
-  Food: '#F87171', Rent: '#60A5FA', Utilities: '#34D399', Shopping: '#FBBF24',
-  EMI: '#A78BFA', Salary: '#10B981', Transport: '#F472B6', Entertainment: '#818CF8',
-  Healthcare: '#fb7185', Education: '#2dd4bf', Uncategorized: '#94a3b8',
-};
-
-export default function TransactionTable({ transactions, loading, page, pageSize, total, onPageChange }) {
+export default function TransactionTable({ transactions, loading, page, pageSize, total, onPageChange, categoryMeta = {} }) {
   const [sortField, setSortField] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
 
@@ -80,43 +74,49 @@ export default function TransactionTable({ transactions, loading, page, pageSize
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.03]">
-            {sorted.map((txn, idx) => (
-              <tr key={txn.id || idx}
-                  className="group hover:bg-slate-800/40 transition-all duration-300">
-                <td className="px-6 py-4 text-xs font-mono text-slate-400 group-hover:text-slate-300 transition-colors">
-                  {txn.txn_date || '—'}
-                </td>
-                <td className="px-6 py-4 text-sm font-bold text-white max-w-[200px] truncate group-hover:translate-x-1 transition-transform">
-                  {txn.merchant || '—'}
-                </td>
-                <td className="px-6 py-4 text-xs text-slate-500 max-w-[250px] truncate italic">
-                  {txn.description || '—'}
-                </td>
-                <td className="px-6 py-4">
-                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
-                        style={{ background: `${CAT_COLORS[txn.category] || '#94a3b8'}20`, color: CAT_COLORS[txn.category] || '#94a3b8', border: `1px solid ${CAT_COLORS[txn.category] || '#94a3b8'}30` }}>
-                    {txn.category}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm font-bold tabular-nums">
-                  {txn.debit > 0 ? (
-                    <span className="text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]">
-                      -₹{Number(txn.debit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            {sorted.map((txn, idx) => {
+              const meta = categoryMeta[txn.category] || {};
+              const color = meta.color || '#94a3b8';
+              const icon = meta.icon || '';
+              return (
+                <tr key={txn.id || idx}
+                    className="group hover:bg-slate-800/40 transition-all duration-300">
+                  <td className="px-6 py-4 text-xs font-mono text-slate-400 group-hover:text-slate-300 transition-colors">
+                    {txn.txn_date || '—'}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-bold text-white max-w-[200px] truncate group-hover:translate-x-1 transition-transform">
+                    {txn.merchant || '—'}
+                  </td>
+                  <td className="px-6 py-4 text-xs text-slate-500 max-w-[250px] truncate italic">
+                    {txn.description || '—'}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1"
+                          style={{ background: `${color}20`, color, border: `1px solid ${color}30` }}>
+                      {icon && <span>{icon}</span>}
+                      {txn.category}
                     </span>
-                  ) : <span className="text-slate-700">—</span>}
-                </td>
-                <td className="px-6 py-4 text-sm font-bold tabular-nums">
-                  {txn.credit > 0 ? (
-                    <span className="text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">
-                      +₹{Number(txn.credit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </span>
-                  ) : <span className="text-slate-700">—</span>}
-                </td>
-                <td className="px-6 py-4 text-sm font-bold tabular-nums text-indigo-300">
-                  ₹{Number(txn.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-bold tabular-nums">
+                    {txn.debit > 0 ? (
+                      <span className="text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]">
+                        -₹{Number(txn.debit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </span>
+                    ) : <span className="text-slate-700">—</span>}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-bold tabular-nums">
+                    {txn.credit > 0 ? (
+                      <span className="text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                        +₹{Number(txn.credit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </span>
+                    ) : <span className="text-slate-700">—</span>}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-bold tabular-nums text-indigo-300">
+                    ₹{Number(txn.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

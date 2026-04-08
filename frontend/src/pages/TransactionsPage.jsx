@@ -5,6 +5,7 @@ import useDebounce from '../hooks/useDebounce';
 import PageWrapper from '../components/PageWrapper';
 import MonthPicker from '../components/MonthPicker';
 import TransactionTable from '../components/TransactionTable';
+import { useCategoryMeta } from '../hooks/useCategoryMeta';
 
 const ALL_CATEGORIES = [
   'All', 'Food', 'Rent', 'Utilities', 'Shopping', 'EMI', 'Salary',
@@ -46,8 +47,12 @@ export default function TransactionsPage() {
     queryParams
   );
 
+
   const data = transactionsQuery.data?.data || { total: 0, data: [] };
   const loading = transactionsQuery.isLoading;
+
+  // Fetch category meta for color/icon badges
+  const { data: categoryMeta = {}, isLoading: metaLoading } = useCategoryMeta(selectedId);
 
   useEffect(() => { setPage(1); }, [selectedId, category, type, debouncedSearch]);
 
@@ -106,11 +111,12 @@ export default function TransactionsPage() {
         {(loading || data.data.length > 0) && (
           <TransactionTable
             transactions={data.data}
-            loading={loading}
+            loading={loading || metaLoading}
             page={page}
             pageSize={pageSize}
             total={data.total}
             onPageChange={setPage}
+            categoryMeta={categoryMeta}
           />
         )}
       </div>
