@@ -1,0 +1,33 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+fastapi = "==0.115.0"
+pdfplumber = "==0.11.4"
+pypdf2 = "==3.0.1"
+pandas = "==2.2.3"
+numpy = "==1.26.4"
+sqlalchemy = "==2.0.35"
+pymysql = "==1.1.1"
+python-dotenv = "==1.0.1"
+python-multipart = "==0.0.12"
+scikit-learn = "==1.5.2"
+fuzzywuzzy = "==0.18.0"
+python-levenshtein = "==0.25.1"
+alembic = "==1.13.3"
+cryptography = "==43.0.1"
+pypdfium2 = "==4.30.0"
+pytesseract = "==0.3.13"
+pillow = "==10.4.0"
+pytest = "==8.3.3"
+openpyxl = "==3.1.5"
+winsdk = "==1.0.0b10"
+uvicorn = {extras = ["standard"], version = "==0.30.6"}
+camelot-py = {extras = ["cv"], version = "==0.11.0"}
+
+[dev-packages]
+
+[requires]
+python_version = "3.14"

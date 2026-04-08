@@ -21,27 +21,38 @@ class OCRExtractor:
         :param tesseract_path: Optional path to the tesseract executable.
         """
         self.tesseract_available = False
+        tesseract_path = tesseract_path or os.getenv("TESSERACT_PATH")
+
+        if not tesseract_path:
+            tesseract_path = self._find_tesseract()
+
         if tesseract_path:
-            pytesseract.pytesseract.tesseract_cmd = tesseract_path
-            self.tesseract_available = True
-        elif os.name == 'nt':
-            # Common Windows paths for Tesseract
+            try:
+                pytesseract.pytesseract.tesseract_cmd = tesseract_path
+                pytesseract.get_tesseract_version()
+                self.tesseract_available = True
+                logger.info(f"Tesseract found and configured at: {tesseract_path}")
+            except Exception as e:
+                logger.warning(f"Tesseract configured at {tesseract_path} but failed to start: {e}")
+        else:
+            try:
+                # Fallback check if it's already in PATH
+                pytesseract.get_tesseract_version()
+                self.tesseract_available = True
+            except Exception:
+                logger.warning("Tesseract not found in standard paths or PATH environment variable.")
+
+    def _find_tesseract(self) -> Optional[str]:
+        if os.name == 'nt':
             common_paths = [
                 r'C:\Program Files\Tesseract-OCR\tesseract.exe',
-                os.path.join('C:\\Users', os.getlogin(), 'AppData', 'Local', 'Tesseract-OCR', 'tesseract.exe')
+                r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
+                os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Tesseract-OCR', 'tesseract.exe'),
             ]
             for path in common_paths:
                 if os.path.exists(path):
-                    pytesseract.pytesseract.tesseract_cmd = path
-                    self.tesseract_available = True
-                    break
-        else:
-            # Check if tesseract is in PATH
-            try:
-                pytesseract.get_tesseract_version()
-                self.tesseract_available = True
-            except:
-                pass
+                    return path
+        return None
 
     async def extract_from_pdf(self, pdf_path: str) -> str:
         """

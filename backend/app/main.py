@@ -21,6 +21,15 @@ app = FastAPI(
     version="1.0.0",
 )
 
+@app.on_event("startup")
+def on_startup():
+    from app.database import SessionLocal, seed_categories
+    db = SessionLocal()
+    try:
+        seed_categories(db)
+    finally:
+        db.close()
+
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,

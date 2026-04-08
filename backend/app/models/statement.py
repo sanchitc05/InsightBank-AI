@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, DECIMAL, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, Numeric, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -15,8 +15,8 @@ class Statement(Base):
     year = Column(Integer, nullable=False)
     file_name = Column(String(255), nullable=False)
     uploaded_at = Column(DateTime, server_default=func.now())
-    total_credit = Column(DECIMAL(12, 2), default=0.00)
-    total_debit = Column(DECIMAL(12, 2), default=0.00)
+    total_credit = Column(Numeric(precision=12, scale=2), default=0.00)
+    total_debit = Column(Numeric(precision=12, scale=2), default=0.00)
 
     # Relationships
     transactions = relationship("Transaction", back_populates="statement", cascade="all, delete-orphan")

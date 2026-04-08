@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Text, DECIMAL, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, Date, Text, Numeric, ForeignKey, Index
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -11,9 +11,9 @@ class Transaction(Base):
     statement_id = Column(Integer, ForeignKey("statements.id", ondelete="CASCADE"), nullable=False)
     txn_date = Column(Date, nullable=True)
     description = Column(Text, nullable=True)
-    debit = Column(DECIMAL(12, 2), default=0.00)
-    credit = Column(DECIMAL(12, 2), default=0.00)
-    balance = Column(DECIMAL(14, 2), default=0.00)
+    debit = Column(Numeric(precision=12, scale=2), default=0.00)
+    credit = Column(Numeric(precision=12, scale=2), default=0.00)
+    balance = Column(Numeric(precision=14, scale=2), default=0.00)
     category = Column(String(50), default="Uncategorized")
     merchant = Column(String(100), nullable=True)
 

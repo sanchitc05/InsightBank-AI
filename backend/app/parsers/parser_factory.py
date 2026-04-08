@@ -1,5 +1,7 @@
 import pdfplumber
 import os
+import logging
+import anyio
 from typing import Union, Type
 
 from app.parsers.sbi_parser import SBIParser
@@ -7,6 +9,9 @@ from app.parsers.hdfc_parser import HDFCParser
 from app.parsers.icici_parser import ICICIParser
 from app.parsers.csv_parser import CSVParser
 from app.parsers.ocr_extractor import OCRExtractor
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 
 BANK_KEYWORDS = {
