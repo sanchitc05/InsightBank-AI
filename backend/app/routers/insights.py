@@ -18,6 +18,7 @@ from app.schemas.schemas import (
     InsightResponse,
     InsightGenerateResponse,
 )
+from app.analytics.trend_analyzer import detect_recurring
 
 router = APIRouter()
 
@@ -182,33 +183,54 @@ def get_analytics_compare(ids: str = Query(...), db: Session = Depends(get_db)):
 
 @router.get("/insights/{stmt_id}", response_model=list[InsightResponse])
 def get_insights(stmt_id: int, db: Session = Depends(get_db)):
-    """Get all insights for a statement, ordered by severity."""
-    severity_order = {"alert": 0, "warn": 1, "info": 2}
+    """Get all insights for a statement, ordered by severity priority."""
+    # Check if statement exists
+    stmt = db.query(Statement).filter(Statement.id == stmt_id).first()
+    if not stmt:
+        raise HTTPException(status_code=404, detail="Statement not found")
+
+    # Query insights ordered by severity: alert (0), warn (1), info (2)
+    severity_priority = {
+        "alert": 0,
+        "warn": 1,
+        "info": 2,
+    }
+    
     insights = (
         db.query(Insight)
         .filter(Insight.statement_id == stmt_id)
         .all()
     )
-    insights.sort(key=lambda x: severity_order.get(x.severity, 3))
+    
+    # Sort by severity priority
+    insights.sort(key=lambda x: severity_priority.get(x.severity, 3))
+    
     return insights
 
 
 @router.post("/insights/generate/{stmt_id}", response_model=InsightGenerateResponse)
 def generate_insights(stmt_id: int, db: Session = Depends(get_db)):
     """Generate AI insights for a statement."""
+    # Check if statement exists
     stmt = db.query(Statement).filter(Statement.id == stmt_id).first()
     if not stmt:
         raise HTTPException(status_code=404, detail="Statement not found")
 
+    # Load transactions
     transactions = (
         db.query(Transaction)
         .filter(Transaction.statement_id == stmt_id)
         .all()
     )
 
+    # Return 422 if no transactions
     if not transactions:
-        raise HTTPException(status_code=400, detail="No transactions found for this statement")
+        raise HTTPException(
+            status_code=422,
+            detail="No transactions found for this statement. Upload a statement first."
+        )
 
+    # Create DataFrame and generate insights
     import pandas as pd
     df = pd.DataFrame([{
         "txn_date": t.txn_date,
@@ -224,10 +246,11 @@ def generate_insights(stmt_id: int, db: Session = Depends(get_db)):
     engine = InsightsEngine(df, stmt_id)
     insights_data = engine.generate_all()
 
-    # Delete existing insights for this statement (regenerate fresh)
+    # Delete existing insights for this statement
     db.query(Insight).filter(Insight.statement_id == stmt_id).delete()
 
-    # Insert new insights
+    # Insert new insights and collect for response
+    created_insights = []
     for ins in insights_data:
         insight = Insight(
             statement_id=stmt_id,
@@ -237,7 +260,45 @@ def generate_insights(stmt_id: int, db: Session = Depends(get_db)):
             severity=ins["severity"],
         )
         db.add(insight)
+        db.flush()  # Flush to get the ID
+        
+        # Create response object
+        created_insights.append(InsightResponse.model_validate(insight))
+
+    # Detect recurring payments
+    # Get all statement IDs with the same bank_name
+    all_bank_statements = (
+        db.query(Statement)
+        .filter(Statement.bank_name == stmt.bank_name)
+        .all()
+    )
+    all_stmt_ids = [s.id for s in all_bank_statements]
+
+    # Call detect_recurring
+    recurring_payments = detect_recurring(db, all_stmt_ids)
+
+    # For each recurring payment found, create an additional insight
+    for recurring in recurring_payments:
+        months_str = ", ".join(recurring["months"])
+        body = f"₹{recurring['amount']} detected in {recurring['count']} months ({months_str}). Likely a {recurring['type']}."
+        
+        insight = Insight(
+            statement_id=stmt_id,
+            type="pattern",
+            title=f"Recurring Payment: {recurring['merchant']}",
+            body=body,
+            severity="info",
+        )
+        db.add(insight)
+        db.flush()
+        
+        # Create response object
+        created_insights.append(InsightResponse.model_validate(insight))
 
     db.commit()
 
-    return InsightGenerateResponse(generated=len(insights_data))
+    return InsightGenerateResponse(
+        statement_id=stmt_id,
+        generated=len(insights_data),
+        insights=created_insights
+    )

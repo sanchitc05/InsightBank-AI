@@ -33,6 +33,16 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
         f.write(content)
 
     try:
+        # Check if this is a scanned PDF without Tesseract
+        from app.parsers.ocr_extractor import OCRExtractor
+        
+        if OCRExtractor.is_likely_scanned(saved_path):
+            if OCRExtractor.find_tesseract() is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="This appears to be a scanned PDF. Please install Tesseract OCR or set TESSERACT_PATH in your .env file."
+                )
+        
         # Detect bank and parse
         bank_name = await detect_bank(saved_path)
         parser = await get_parser(bank_name)

@@ -31,25 +31,25 @@ def seed_categories(db: Session):
     """Seed initial categories if the table is empty."""
     from app.models.category import Category
     
-    if db.query(Category).count() == 0:
-        default_categories = [
-            {"name": "Food & Dining", "keywords": ["restaurant", "swiggy", "zomato", "cafe", "baker", "food", "dining"], "color": "#FF6B6B", "icon": "utensils"},
-            {"name": "Shopping", "keywords": ["amazon", "flipkart", "myntra", "mart", "retail", "store"], "color": "#4ECDC4", "icon": "shopping-bag"},
-            {"name": "Transportation", "keywords": ["uber", "ola", "metro", "irctc", "fuel", "petrol", "parking"], "color": "#45B7D1", "icon": "car"},
-            {"name": "Bills & Utilities", "keywords": ["electricity", "water", "gas", "recharge", "airtel", "jio", "broadband", "bescom"], "color": "#FDCB6E", "icon": "file-invoice-dollar"},
-            {"name": "Entertainment", "keywords": ["netflix", "prime", "hotstar", "spotify", "bookmyshow", "cinema", "movie"], "color": "#A55EEA", "icon": "film"},
-            {"name": "Health & Fitness", "keywords": ["pharmacy", "hospital", "clinic", "gym", "cult", "health", "medicine", "apollo"], "color": "#FF9FF3", "icon": "heartbeat"},
-            {"name": "Travel", "keywords": ["makemytrip", "flight", "hotel", "indigo", "yatra", "airbnb"], "color": "#00D2D3", "icon": "plane"},
-            {"name": "Investments", "keywords": ["zerodha", "groww", "upstox", "mutual fund", "sip", "stocks", "investment"], "color": "#27AE60", "icon": "chart-line"},
-            {"name": "Income", "keywords": ["salary", "interest", "dividend", "cred", "cashback", "refund", "upi/cr"], "color": "#2ECC71", "icon": "arrow-down"},
-            {"name": "Uncategorized", "keywords": [], "color": "#95A5A6", "icon": "question"}
-        ]
-        
-        for cat_data in default_categories:
-            db.add(Category(**cat_data))
-        
-        try:
-            db.commit()
-        except Exception as e:
-            db.rollback()
-            print(f"Error seeding categories: {e}")
+    if db.query(Category).count() > 0:
+        return
+    categories = [
+        {"name": "Food", "keywords": ["swiggy","zomato","restaurant","cafe","food","hotel","eat"], "color": "#f97316", "icon": "🍔"},
+        {"name": "Rent", "keywords": ["rent","house","landlord","pg","accommodation"], "color": "#8b5cf6", "icon": "🏠"},
+        {"name": "Utilities", "keywords": ["electricity","water","gas","internet","broadband","bill"], "color": "#06b6d4", "icon": "⚡"},
+        {"name": "Shopping", "keywords": ["amazon","flipkart","myntra","mall","store","shop","purchase"], "color": "#ec4899", "icon": "🛍️"},
+        {"name": "EMI", "keywords": ["emi","loan","equated","installment","repayment"], "color": "#ef4444", "icon": "💳"},
+        {"name": "Salary", "keywords": ["salary","stipend","payroll","income","credited by"], "color": "#10b981", "icon": "💰"},
+        {"name": "Transport", "keywords": ["uber","ola","rapido","metro","bus","petrol","fuel","cab"], "color": "#f59e0b", "icon": "🚗"},
+        {"name": "Entertainment", "keywords": ["netflix","spotify","prime","hotstar","youtube","movie"], "color": "#a855f7", "icon": "🎬"},
+        {"name": "Healthcare", "keywords": ["pharmacy","hospital","clinic","doctor","medicine","health"], "color": "#14b8a6", "icon": "🏥"},
+        {"name": "Education", "keywords": ["udemy","coursera","college","fees","tuition","book"], "color": "#3b82f6", "icon": "📚"},
+    ]
+    for cat in categories:
+        db.add(Category(
+            name=cat["name"],
+            keywords=cat["keywords"],
+            color=cat["color"],
+            icon=cat["icon"]
+        ))
+    db.commit()

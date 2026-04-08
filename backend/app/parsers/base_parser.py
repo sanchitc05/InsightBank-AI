@@ -1,10 +1,18 @@
 import re
+import sys
+import io
 from abc import ABC, abstractmethod
 from datetime import datetime, date
 from typing import List, Optional
 
 import pandas as pd
 import pdfplumber
+
+# Fix UTF-8 encoding on Windows for ₹ symbol support
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if sys.stderr.encoding and sys.stderr.encoding.lower() != 'utf-8':
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 
 class BaseParser(ABC):

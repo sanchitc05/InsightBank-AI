@@ -3,6 +3,29 @@ from typing import List, Optional
 import io
 from app.parsers.base_parser import BaseParser
 
+HEADER_MAP = {
+    "date": "txn_date",
+    "txn date": "txn_date",
+    "transaction date": "txn_date",
+    "value date": "txn_date",
+    "narration": "description",
+    "transaction remarks": "description",
+    "particulars": "description",
+    "description": "description",
+    "remarks": "description",
+    "debit": "debit",
+    "withdrawal amt": "debit",
+    "withdrawal amount (inr)": "debit",
+    "dr": "debit",
+    "credit": "credit",
+    "deposit amt": "credit",
+    "deposit amount (inr)": "credit",
+    "cr": "credit",
+    "balance": "balance",
+    "closing balance": "balance",
+    "running balance": "balance",
+}
+
 class CSVParser(BaseParser):
     """Parser for bank statements in CSV format."""
 
@@ -16,20 +39,22 @@ class CSVParser(BaseParser):
                 # Try different encodings/delimiters if needed
                 df = pd.read_csv(csv_path)
                 
-                # Map common column names to standard internal names
-                column_map = {
-                    'Date': 'date', 'Tran Date': 'date', 'Value Date': 'date', 'Transaction Date': 'date',
-                    'Narration': 'description', 'Description': 'description', 'Transaction Remarks': 'description',
-                    'Debit': 'debit', 'Withdrawal': 'debit', 'Withdrawal Amt': 'debit',
-                    'Credit': 'credit', 'Deposit': 'credit', 'Deposit Amt': 'credit',
-                    'Balance': 'balance', 'Closing Balance': 'balance'
-                }
+                # Apply column normalization
+                normalized_data = []
+                for _, row in df.iterrows():
+                    normalized = {HEADER_MAP[col.strip().lower()]: val
+                                  for col, val in row.items()
+                                  if col.strip().lower() in HEADER_MAP}
+                    if normalized:
+                        normalized_data.append(normalized)
                 
-                # Rename columns based on map
-                df = df.rename(columns={c: column_map[c] for c in df.columns if c in column_map})
+                if not normalized_data:
+                    return pd.DataFrame()
+                
+                df = pd.DataFrame(normalized_data)
                 
                 # Ensure required columns exist
-                required = ['date', 'description']
+                required = ['txn_date', 'description']
                 for col in required:
                     if col not in df.columns:
                         return pd.DataFrame()
@@ -49,8 +74,11 @@ class CSVParser(BaseParser):
                     df['balance'] = df['balance'].fillna(0).apply(self.clean_amount)
 
                 # Clean dates
-                df['date'] = df['date'].apply(self._safe_parse_date)
-                df = df.dropna(subset=['date'])
+                df['txn_date'] = df['txn_date'].apply(self._safe_parse_date)
+                df = df.dropna(subset=['txn_date'])
+                
+                # Rename to standard internal names
+                df = df.rename(columns={'txn_date': 'date'})
                 
                 if 'balance' in df.columns:
                     return df[['date', 'description', 'debit', 'credit', 'balance']]

@@ -93,7 +93,9 @@ class InsightResponse(InsightBase):
 
 
 class InsightGenerateResponse(BaseModel):
+    statement_id: int
     generated: int
+    insights: List[InsightResponse]
 
 
 # ── Analytics Schemas ──────────────────────────────────────

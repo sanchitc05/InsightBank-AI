@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import subprocess
 import tempfile
 import asyncio
@@ -52,6 +53,32 @@ class OCRExtractor:
             for path in common_paths:
                 if os.path.exists(path):
                     return path
+        return None
+
+    @staticmethod
+    def find_tesseract() -> Optional[str]:
+        """Static method to check if Tesseract is available."""
+        tesseract_path = os.getenv("TESSERACT_PATH")
+        
+        if tesseract_path and os.path.exists(tesseract_path):
+            return tesseract_path
+        
+        # Check common installation paths on Windows
+        if os.name == 'nt':
+            common_paths = [
+                r'C:\Program Files\Tesseract-OCR\tesseract.exe',
+                r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
+                os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Tesseract-OCR', 'tesseract.exe'),
+            ]
+            for path in common_paths:
+                if os.path.exists(path):
+                    return path
+        
+        # Check system PATH using shutil (cross-platform)
+        path = shutil.which("tesseract")
+        if path:
+            return path
+        
         return None
 
     async def extract_from_pdf(self, pdf_path: str) -> str:
@@ -158,14 +185,19 @@ class OCRExtractor:
     @staticmethod
     def is_likely_scanned(pdf_path: str) -> bool:
         """
-        Quick check if a PDF is likely scanned (no extractable text).
+        Check if a PDF is likely scanned (has little to no extractable text).
+        Returns True if less than 50 characters are extractable from the first 2 pages.
         """
         import pdfplumber
         try:
             with pdfplumber.open(pdf_path) as pdf:
-                for page in pdf.pages:
-                    if page.extract_text():
-                        return False
-            return True
+                total_text = ""
+                for page in pdf.pages[:2]:  # Check first 2 pages
+                    text = page.extract_text()
+                    if text:
+                        total_text += text
+                
+                # If less than 50 characters extracted, treat as scanned
+                return len(total_text.strip()) < 50
         except:
             return True

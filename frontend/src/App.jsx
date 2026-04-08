@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import DashboardPage from './pages/DashboardPage';
+import Dashboard from './pages/Dashboard';
 import UploadPage from './pages/UploadPage';
 import TransactionsPage from './pages/TransactionsPage';
-import InsightsPage from './pages/InsightsPage';
-import ComparePage from './pages/ComparePage';
+import Insights from './pages/Insights';
+import Compare from './pages/Compare';
 
 export default function App() {
   return (
@@ -12,11 +12,11 @@ export default function App() {
       <Navbar />
       <main className="flex-1">
         <Routes>
-          <Route path="/" element={<DashboardPage />} />
+          <Route path="/" element={<Dashboard />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
-          <Route path="/insights" element={<InsightsPage />} />
-          <Route path="/compare" element={<ComparePage />} />
+          <Route path="/insights" element={<Insights />} />
+          <Route path="/compare" element={<Compare />} />
         </Routes>
       </main>
     </BrowserRouter>

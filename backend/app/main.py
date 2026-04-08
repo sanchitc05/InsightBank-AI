@@ -1,10 +1,11 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from app.routers import statements, transactions, insights
-from app.database import engine, Base
+from app.routers import statements, transactions, insights, analytics
+from app.database import engine, Base, SessionLocal, seed_categories
 
 load_dotenv()
 
@@ -15,20 +16,21 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Create all tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(
-    title="Bank Statement Analyzer API",
-    description="API for parsing bank statements, managing transactions, and generating financial insights.",
-    version="1.0.0",
-)
-
-@app.on_event("startup")
-def on_startup():
-    from app.database import SessionLocal, seed_categories
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         seed_categories(db)
     finally:
         db.close()
+    yield
+
+app = FastAPI(
+    title="Bank Statement Analyzer API",
+    description="API for parsing bank statements, managing transactions, and generating financial insights.",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 # CORS configuration
 app.add_middleware(
@@ -43,6 +45,7 @@ app.add_middleware(
 app.include_router(statements.router, prefix="/api/v1", tags=["Statements"])
 app.include_router(transactions.router, prefix="/api/v1", tags=["Transactions"])
 app.include_router(insights.router, prefix="/api/v1", tags=["Analytics & Insights"])
+app.include_router(analytics.router, prefix="/api/v1", tags=["Analytics"])
 
 
 @app.get("/", tags=["Health"])

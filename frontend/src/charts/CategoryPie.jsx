@@ -1,4 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { formatINR } from '../utils/format';
 
 const RADIAN = Math.PI / 180;
 
@@ -23,7 +24,7 @@ const CustomTooltip = ({ active, payload }) => {
           {data.icon} {data.category}
         </p>
         <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-          ₹{Number(data.total).toLocaleString('en-IN')} • {data.count} txns • {data.percentage}%
+          {formatINR(data.total)} • {data.count} txns • {data.percentage.toFixed(1)}%
         </p>
       </div>
     );
@@ -31,11 +32,11 @@ const CustomTooltip = ({ active, payload }) => {
   return null;
 };
 
-export default function CategoryPieChart({ data }) {
+export default function CategoryPie({ data = [] }) {
   if (!data || data.length === 0) {
     return (
-      <div className="glass-card p-8 text-center">
-        <p style={{ color: 'var(--text-muted)' }}>No category data available</p>
+      <div className="glass-card p-8 text-center" style={{ height: '340px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: 'var(--text-muted)' }}>No expense data for this statement</p>
       </div>
     );
   }
@@ -45,7 +46,7 @@ export default function CategoryPieChart({ data }) {
       <h3 className="text-base font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
         🎯 Spending by Category
       </h3>
-      <ResponsiveContainer width="100%" height={320}>
+      <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           <Pie data={data} dataKey="total" nameKey="category" cx="50%" cy="50%"
                outerRadius={110} innerRadius={55} paddingAngle={3} labelLine={false}
