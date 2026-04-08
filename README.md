@@ -1,11 +1,14 @@
-# 🏦 InsightBank-AI: Bank Statement Analyzer
+# InsightBank AI
 
-> Intelligent multi-bank statement parsing, transaction analysis, and AI-powered financial insights in one comprehensive platform.
+A comprehensive full-stack intelligent financial analysis platform that transforms bank statements into actionable insights using AI-powered analysis.
+
+> Production-grade architecture with React Query, Error Boundaries, and request cancellation.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10+-blue)](https://www.python.org/)
-[![React](https://img.shields.io/badge/react-19-61dafb)](https://react.dev/)
-[![FastAPI](https://img.shields.io/badge/fastapi-0.115-009688)](https://fastapi.tiangolo.com/)
+[![Python](https://img.shields.io/badge/python-3.8+-blue)](https://www.python.org/)
+[![React](https://img.shields.io/badge/react-18-61dafb)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/fastapi-modern-009688)](https://fastapi.tiangolo.com/)
+[![Status](https://img.shields.io/badge/status-production%20ready-green)]()
 
 ## 📋 Overview
 

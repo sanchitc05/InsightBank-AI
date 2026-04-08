@@ -1,51 +1,10 @@
 import { useState, useEffect } from 'react';
 import * as api from '../services/api';
 import { useAsync } from '../hooks/useAsync';
+import { useToast } from '../hooks/useToast';
+import { SkeletonCard } from '../components/Skeleton';
+import PageWrapper from '../components/PageWrapper';
 import InsightCard from '../components/InsightCard';
-
-// ── Skeleton Loader Component ──────────────────
-function SkeletonCard() {
-  return (
-    <div
-      className="rounded-lg p-5 border-l-4 animate-pulse"
-      style={{
-        borderColor: '#cbd5e1',
-        backgroundColor: 'rgba(203, 213, 225, 0.1)',
-        height: '200px',
-      }}
-    />
-  );
-}
-
-// ── Toast Notification System ──────────────────
-function Toast({ message, type, onDismiss }) {
-  useEffect(() => {
-    const timer = setTimeout(onDismiss, type === 'success' ? 3000 : 5000);
-    return () => clearTimeout(timer);
-  }, [onDismiss, type]);
-
-  const bgColor = type === 'success' ? '#10b981' : '#ef4444';
-
-  return (
-    <div
-      className="fixed bottom-6 right-6 px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg"
-      style={{ backgroundColor: bgColor }}
-    >
-      {message}
-    </div>
-  );
-}
-
-// ── Toast Container ────────────────────────────
-function ToastContainer({ toasts }) {
-  return (
-    <div className="fixed bottom-6 right-6 z-50 space-y-2">
-      {toasts.map((t) => (
-        <Toast key={t.id} {...t} />
-      ))}
-    </div>
-  );
-}
 
 // ── Empty State Component ──────────────────────
 function EmptyState({ onGenerateClick }) {
@@ -156,7 +115,7 @@ export default function Insights() {
   const [selectedId, setSelectedId] = useState(null);
   const [statements, setStatements] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [toasts, setToasts] = useState([]);
+  const { showToast } = useToast();
 
   // Fetch statements
   const stmtsResult = useAsync(() => api.getStatements(), []);
@@ -194,18 +153,6 @@ export default function Insights() {
     return `${stmt.bank_name} · ${months[stmt.month]} ${stmt.year}`;
   };
 
-  // Add toast
-  const addToast = (message, type = 'success') => {
-    const id = Date.now();
-    const newToast = { id, message, type, onDismiss: () => removeToast(id) };
-    setToasts((prev) => [...prev, newToast]);
-  };
-
-  // Remove toast
-  const removeToast = (id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
-
   // Handle generate click
   const handleGenerate = async () => {
     if (!selectedId) return;
@@ -214,13 +161,13 @@ export default function Insights() {
     try {
       const response = await api.generateInsights(selectedId);
       const count = response.data.generated;
-      addToast(`✓ ${count} ${count === 1 ? 'insight' : 'insights'} generated`, 'success');
+      showToast(`✓ ${count} ${count === 1 ? 'insight' : 'insights'} generated`, 'success');
 
       // Reload insights
       insightsResult.retry();
     } catch (error) {
       const message = error.response?.data?.detail || 'Failed to generate insights';
-      addToast(`Error: ${message}`, 'error');
+      showToast(`Error: ${message}`, 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -239,15 +186,16 @@ export default function Insights() {
     groupedInsights.info.length > 0;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-base)' }}>
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* ── SECTION 1: Header Row ──────────────────────── */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                Insights
-              </h1>
+    <PageWrapper>
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-base)' }}>
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          {/* ── SECTION 1: Header Row ──────────────────────── */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                  Insights
+                </h1>
               <p
                 className="text-sm mt-1"
                 style={{ color: 'var(--text-secondary)' }}
@@ -350,10 +298,8 @@ export default function Insights() {
             />
           </div>
         )}
+        </div>
       </div>
-
-      {/* Toast notifications */}
-      <ToastContainer toasts={toasts} />
-    </div>
+    </PageWrapper>
   );
 }

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAsync } from '../hooks/useAsync';
+import PageWrapper from '../components/PageWrapper';
 import { getStatements, getCompare, getInsights } from '../services/api';
 import { formatINR } from '../utils/format';
 import {
@@ -165,7 +166,7 @@ function SummaryTable({ summaries, statements }) {
 }
 
 // ── Category Comparison Chart ─────────────────────
-function CategoryChart({ categoryComparison, statements }) {
+function CategoryChart({ categoryComparison, statements, chartData: preComputedChartData }) {
   if (!categoryComparison || categoryComparison.length === 0) {
     return (
       <div className="glass-card p-8 text-center">
@@ -178,7 +179,8 @@ function CategoryChart({ categoryComparison, statements }) {
   const stmt2 = statements[1];
   const formatLabel = (s) => `${s.bank_name} · ${MONTH_NAMES[s.month]} ${s.year}`;
 
-  const chartData = categoryComparison.map((cat) => ({
+  // Use pre-computed chart data to avoid re-rendering
+  const chartData = preComputedChartData || categoryComparison.map((cat) => ({
     name: cat.category.length > 10 ? cat.category.substring(0, 10) + '...' : cat.category,
     'Statement A': cat.amount_a,
     'Statement B': cat.amount_b,
@@ -360,6 +362,17 @@ export default function Compare() {
 
   const statements = statementsResult.data || [];
 
+  // Memoize category comparison chart data transformation
+  const chartData = useMemo(() => {
+    if (!compareData?.category_comparison) return [];
+    return compareData.category_comparison.map((cat) => ({
+      name: cat.category.length > 10 ? cat.category.substring(0, 10) + '...' : cat.category,
+      'Statement A': cat.amount_a,
+      'Statement B': cat.amount_b,
+      change_pct: cat.change_pct,
+    }));
+  }, [compareData?.category_comparison]);
+
   // Initialize default selections
   useEffect(() => {
     if (statements.length >= 1 && statementAId === null) {
@@ -370,43 +383,56 @@ export default function Compare() {
         setStatementBId(statements[0].id);
       }
     }
-  }, [statements, statementAId]);
+  }, [statements]);
 
-  // Fetch comparison when selections change
+  // Fetch comparison ONLY when both statements are selected
   useEffect(() => {
-    if (!statementAId || !statementBId) return;
+    // Don't fetch if either is missing or if they're the same
+    if (!statementAId || !statementBId) {
+      setCompareData(null);
+      return;
+    }
+
+    // Reset comparison data when selections change
+    setCompareData(null);
+    setCompareError(null);
 
     const fetchCompare = async () => {
       setCompareLoading(true);
-      setCompareError(null);
       try {
         const res = await getCompare(statementAId, statementBId);
         setCompareData(res.data);
       } catch (err) {
         setCompareError(err.response?.data?.detail || 'Failed to load comparison');
+        setCompareData(null);
       } finally {
         setCompareLoading(false);
       }
     };
 
-    fetchCompare();
+    // Small delay to prevent flickering
+    const timer = setTimeout(fetchCompare, 100);
+    return () => clearTimeout(timer);
   }, [statementAId, statementBId]);
 
   const formatStmtLabel = (stmt) => `${stmt.bank_name} · ${MONTH_NAMES[stmt.month]} ${stmt.year}`;
 
   if (statementsResult.loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-slate-700 rounded w-48"></div>
-          <div className="h-16 bg-slate-700 rounded"></div>
+      <PageWrapper>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-slate-700 rounded w-48"></div>
+            <div className="h-16 bg-slate-700 rounded"></div>
+          </div>
         </div>
-      </div>
+      </PageWrapper>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <PageWrapper>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
         <h1
@@ -517,6 +543,7 @@ export default function Compare() {
             <CategoryChart
               categoryComparison={compareData.category_comparison}
               statements={compareData.statements}
+              chartData={chartData}
             />
           </div>
         </div>
@@ -551,6 +578,7 @@ export default function Compare() {
           </button>
         </div>
       )}
-    </div>
+      </div>
+    </PageWrapper>
   );
 }
