@@ -5,23 +5,21 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Store for active abort controllers
-const abortControllers = new Map();
-
-// Cancel all ongoing requests (useful on unmount or app exit)
-export const cancelAllRequests = () => {
-  abortControllers.forEach(controller => controller.abort());
-  abortControllers.clear();
-};
+// Response interceptor to unwrap data
+api.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    console.error('API Error:', error.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
 
 // ── Statements ────────────────────────────────
 export const uploadStatement = (file, onProgress) => {
   const formData = new FormData();
   formData.append('file', file);
-  const controller = new AbortController();
   return api.post('/statements/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    signal: controller.signal,
     onUploadProgress: (e) => {
       if (onProgress && e.total) {
         onProgress(Math.round((e.loaded * 100) / e.total));
@@ -30,38 +28,62 @@ export const uploadStatement = (file, onProgress) => {
   });
 };
 
-export const getStatements = (signal) => 
-  api.get('/statements', { signal });
+export const getStatements = (signal) => {
+  const s = signal?.signal || signal;
+  return api.get('/statements', { signal: s });
+};
 
-export const getStatement = (id, signal) => 
-  api.get(`/statements/${id}`, { signal });
+export const getStatement = (id, signal) => {
+  const s = signal?.signal || signal;
+  return api.get(`/statements/${id}`, { signal: s });
+};
 
 export const deleteStatement = (id) => 
   api.delete(`/statements/${id}`);
 
 // ── Transactions ──────────────────────────────
-export const getTransactions = (params, signal) => 
-  api.get('/transactions', { params, signal });
+export const getTransactions = (params, signal) => {
+  const s = signal?.signal || signal;
+  return api.get('/transactions', { params, signal: s });
+};
 
 // ── Analytics ─────────────────────────────────
-export const getAnalyticsSummary = (id, signal) => 
-  api.get(`/analytics/summary/${id}`, { signal });
+export const getAnalyticsSummary = (id, signal) => {
+  const s = signal?.signal || signal;
+  return api.get(`/analytics/summary/${id}`, { signal: s });
+};
 
-export const getCategories = (id, signal) => 
-  api.get(`/analytics/categories/${id}`, { signal });
+export const getCategories = (id, signal) => {
+  const s = signal?.signal || signal;
+  return api.get(`/analytics/categories/${id}`, { signal: s });
+};
 
-export const getTrend = (signal) => 
-  api.get('/analytics/trend', { signal });
+export const getTrend = (signal) => {
+  const s = signal?.signal || signal;
+  return api.get('/analytics/trend', { signal: s });
+};
 
-export const getCompare = (id1, id2, signal) => 
-  api.get('/analytics/compare', { params: { ids: `${id1},${id2}` }, signal });
+export const getCompare = (id1, id2, signal) => {
+  const s = signal?.signal || signal;
+  return api.get('/analytics/compare', { params: { ids: `${id1},${id2}` }, signal: s });
+};
 
 // ── Insights ──────────────────────────────────
-export const getInsights = (id, signal) => 
-  api.get(`/insights/${id}`, { signal });
+export const getInsights = (id, signal) => {
+  const s = signal?.signal || signal;
+  return api.get(`/insights/${id}`, { signal: s });
+};
 
 export const generateInsights = (id) => 
   api.post(`/insights/generate/${id}`);
 
-export default api;
+// ── Aliases ───────────────────────────────────
+export const fetchStatements = getStatements;
+export const fetchTransactions = getTransactions;
+export const fetchDashboardSummary = getAnalyticsSummary;
+export const fetchCategoryBreakdown = getCategories;
+export const fetchMonthlyTrends = getTrend;
+export const fetchCategoryComparison = getCompare;
+export const fetchInsights = getInsights;
 
+export default api;

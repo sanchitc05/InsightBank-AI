@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import * as api from '../api/api';
+import * as api from '../services/api';
 
 /**
  * Hook for statement-related operations
@@ -7,7 +7,7 @@ import * as api from '../api/api';
 export const useStatements = () => {
   return useQuery({
     queryKey: ['statements'],
-    queryFn: api.fetchStatements,
+    queryFn: ({ signal }) => api.fetchStatements(signal),
   });
 };
 

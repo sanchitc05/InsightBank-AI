@@ -48,7 +48,7 @@ export default function TransactionsPage() {
   );
 
 
-  const data = transactionsQuery.data?.data || { total: 0, data: [] };
+  const data = transactionsQuery.data || { total: 0, data: [] };
   const loading = transactionsQuery.isLoading;
 
   // Fetch category meta for color/icon badges

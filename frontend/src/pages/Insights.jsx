@@ -126,7 +126,8 @@ export default function Insights() {
 
   // Fetch insights
   const insightsQuery = useInsights(selectedId);
-  const insights = insightsQuery.data || [];
+  const insightsData = insightsQuery.data;
+  const insightsList = insightsData?.insights || [];
 
   // Mutations
   const generateMutation = useGenerateInsights();
@@ -147,9 +148,9 @@ export default function Insights() {
 
   // Group insights by severity
   const groupedInsights = {
-    alert: insights.filter((i) => i.severity === 'alert') || [],
-    warn: insights.filter((i) => i.severity === 'warn') || [],
-    info: insights.filter((i) => i.severity === 'info') || [],
+    alert: insightsList.filter((i) => i.severity === 'alert') || [],
+    warn: insightsList.filter((i) => i.severity === 'warn') || [],
+    info: insightsList.filter((i) => i.severity === 'info') || [],
   };
 
   const hasAnyInsights =

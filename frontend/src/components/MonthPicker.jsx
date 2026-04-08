@@ -1,6 +1,7 @@
 const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function MonthPicker({ statements, selectedId, onSelect, loading }) {
+  console.log('DEBUG: MonthPicker rendering with statements:', statements);
   if (loading) return <div className="skeleton h-10 w-64" />;
 
   return (
@@ -15,7 +16,7 @@ export default function MonthPicker({ statements, selectedId, onSelect, loading 
         minWidth: '240px',
       }}>
       <option value="">Select a statement...</option>
-      {(statements || []).map(stmt => (
+      {Array.isArray(statements) && statements.map(stmt => (
         <option key={stmt.id} value={stmt.id}>
           {stmt.bank_name} — {MONTH_NAMES[stmt.month]} {stmt.year}
           {stmt.account_number ? ` (${stmt.account_number})` : ''}

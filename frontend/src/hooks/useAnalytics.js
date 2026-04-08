@@ -1,23 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
-import * as api from '../api/api';
+import * as api from '../services/api';
 
 /**
  * Hook for dashboard summary statistics
  */
-export const useDashboardSummary = () => {
+export const useDashboardSummary = (id) => {
   return useQuery({
-    queryKey: ['dashboard-summary'],
-    queryFn: api.fetchDashboardSummary,
+    queryKey: ['dashboard-summary', id],
+    queryFn: ({ signal }) => api.fetchDashboardSummary(id, signal),
+    enabled: !!id,
   });
 };
 
 /**
  * Hook for category breakdown chart
  */
-export const useCategoryBreakdown = () => {
+export const useCategoryBreakdown = (id) => {
   return useQuery({
-    queryKey: ['category-breakdown'],
-    queryFn: api.fetchCategoryBreakdown,
+    queryKey: ['category-breakdown', id],
+    queryFn: ({ signal }) => api.fetchCategoryBreakdown(id, signal),
+    enabled: !!id,
   });
 };
 
@@ -27,7 +29,7 @@ export const useCategoryBreakdown = () => {
 export const useMonthlyTrends = () => {
   return useQuery({
     queryKey: ['monthly-trends'],
-    queryFn: api.fetchMonthlyTrends,
+    queryFn: ({ signal }) => api.fetchMonthlyTrends(signal),
   });
 };
 
@@ -37,7 +39,7 @@ export const useMonthlyTrends = () => {
 export const useCategoryComparison = (category) => {
   return useQuery({
     queryKey: ['category-comparison', category],
-    queryFn: () => api.fetchCategoryComparison(category),
+    queryFn: ({ signal }) => api.fetchCategoryComparison(category, null, signal),
     enabled: !!category,
   });
 };

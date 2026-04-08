@@ -70,14 +70,21 @@ export default function Dashboard() {
     selectedId ? { statement_id: selectedId, page_size: 500 } : null
   );
 
+  const summary = summaryQuery.data || {};
+  const categoryData = categoriesQuery.data || [];
+  const trendData = trendQuery.data || [];
+  const transactions = transactionsQuery.data?.data || [];
+
   // Memoize balance data
   const balanceData = useMemo(() => {
-    if (!transactionsQuery.data?.data) return [];
-    const txns = transactionsQuery.data.data;
+    const rawData = transactions;
+    if (!Array.isArray(rawData)) return [];
+    
     const byDate = {};
-    txns.forEach(txn => {
+    rawData.forEach(txn => {
       if (txn.txn_date) byDate[txn.txn_date] = txn.balance;
     });
+    
     return Object.entries(byDate).map(([date, balance]) => ({
       date,
       dateLabel: new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
@@ -87,11 +94,14 @@ export default function Dashboard() {
 
   // Memoize spending by weekday
   const spendByWeekday = useMemo(() => {
-    if (!transactionsQuery.data?.data) return null;
+    const rawData = transactions;
+    if (!Array.isArray(rawData)) return null;
+    
     const weekdayTotals = [0, 0, 0, 0, 0, 0, 0];
     const weekdayCount = [0, 0, 0, 0, 0, 0, 0];
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    transactionsQuery.data.data.forEach(txn => {
+    
+    rawData.forEach(txn => {
       if (txn.txn_date && txn.debit > 0) {
         const date = new Date(txn.txn_date);
         const dayIdx = date.getDay();
@@ -99,25 +109,32 @@ export default function Dashboard() {
         weekdayCount[dayIdx] += 1;
       }
     });
+    
     return days.map((day, idx) => ({
       day,
       avg_spend: weekdayCount[idx] > 0 ? weekdayTotals[idx] / weekdayCount[idx] : 0,
     }));
   }, [transactionsQuery.data]);
 
-  // Memoize top merchants
   const topMerchants = useMemo(() => {
-    if (!transactionsQuery.data?.data) return [];
-    const merchantTotals = {};
-    transactionsQuery.data.data.forEach(txn => {
-      if (txn.debit > 0 && txn.merchant && txn.merchant.trim() && txn.merchant !== 'Unknown') {
-        merchantTotals[txn.merchant] = (merchantTotals[txn.merchant] || 0) + txn.debit;
+    const rawData = transactionsQuery.data?.data;
+    if (!Array.isArray(rawData)) return [];
+    
+    const counts = {};
+    rawData.forEach(txn => {
+      const description = txn.description || '';
+      const debit = Number(txn.debit) || 0;
+      if (description && debit > 0) {
+        // Simple normalization: first word usually works for merchants
+        const merchant = description.split(' ')[0].split('*')[0].substring(0, 15);
+        counts[merchant] = (counts[merchant] || 0) + debit;
       }
     });
-    return Object.entries(merchantTotals)
+    
+    return Object.entries(counts)
       .map(([merchant, total]) => ({ merchant, total }))
       .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
+      .slice(0, 6);
   }, [transactionsQuery.data]);
 
   const maxMerchantAmount = topMerchants.length > 0 ? Math.max(...topMerchants.map(m => m.total)) : 1;
@@ -168,7 +185,7 @@ export default function Dashboard() {
             </h1>
             
             <div className="flex gap-2 flex-wrap bg-slate-900/40 p-2 rounded-2xl border border-white/5 w-fit">
-              {statements.map((stmt) => (
+              {(Array.isArray(statements) ? statements : []).map((stmt) => (
                 <button
                   key={stmt.id}
                   onClick={() => setSelectedId(stmt.id)}
@@ -201,31 +218,31 @@ export default function Dashboard() {
                   <SkeletonLoader />
                   <SkeletonLoader />
                 </>
-              ) : summaryQuery.data?.data ? (
+              ) : summaryQuery.data ? (
                 <>
                   <SummaryCard
                     label="Total Income"
-                    value={formatINR(summaryQuery.data.data.total_income)}
+                    value={formatINR(summary.total_income)}
                     icon="↑"
                     accentColor="#10b981"
                   />
                   <SummaryCard
                     label="Total Expense"
-                    value={formatINR(summaryQuery.data.data.total_expense)}
+                    value={formatINR(summary.total_expense)}
                     icon="↓"
                     accentColor="#ef4444"
                   />
                   <SummaryCard
                     label="Savings"
-                    value={formatINR(summaryQuery.data.data.savings)}
-                    sublabel={`${summaryQuery.data.data.savings_rate.toFixed(1)}% saved`}
+                    value={formatINR(summary.savings)}
+                    sublabel={`${summary.savings_rate?.toFixed(1) || '0'}% saved`}
                     icon="💰"
                     accentColor="#3b82f6"
                   />
                   <SummaryCard
                     label="Top Category"
-                    value={summaryQuery.data.data.top_category}
-                    sublabel={`${formatINR(summaryQuery.data.data.daily_avg_spend)} avg/day`}
+                    value={summary.top_category}
+                    sublabel={`${formatINR(summary.daily_avg_spend)} avg/day`}
                     icon="📊"
                     accentColor="#8b5cf6"
                   />
@@ -241,10 +258,10 @@ export default function Dashboard() {
             </h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {trendQuery.isError && <ErrorBanner error={trendQuery.error} onRetry={trendQuery.refetch} label="trend" />}
-              {trendQuery.isLoading ? <SkeletonLoader height="340px" /> : <IncomeExpenseBar data={trendQuery.data?.data || []} />}
+              {trendQuery.isLoading ? <SkeletonLoader height="340px" /> : <IncomeExpenseBar data={trendData} />}
 
               {categoriesQuery.isError && <ErrorBanner error={categoriesQuery.error} onRetry={categoriesQuery.refetch} label="categories" />}
-              {categoriesQuery.isLoading ? <SkeletonLoader height="340px" /> : <CategoryPie data={categoriesQuery.data?.data || []} />}
+              {categoriesQuery.isLoading ? <SkeletonLoader height="340px" /> : <CategoryPie data={categoryData} />}
             </div>
           </div>
 

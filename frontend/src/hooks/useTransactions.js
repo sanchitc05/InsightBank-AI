@@ -7,7 +7,7 @@ import * as api from '../services/api';
 export const useTransactions = (params) => {
   return useQuery({
     queryKey: ['transactions', params],
-    queryFn: () => api.fetchTransactions(params),
+    queryFn: ({ signal }) => api.fetchTransactions(params, signal),
     placeholderData: (previousData) => previousData,
   });
 };
