@@ -1,11 +1,19 @@
 import logging
 import os
 import shutil
-import subprocess
 import tempfile
 import asyncio
 from typing import List, Optional
-import pypdfium2 as pdfium
+try:
+    import pypdfium2 as pdfium
+except Exception:
+    pdfium = None
+    # Defer logging until logger exists; use print fallback
+    try:
+        logger = logging.getLogger(__name__)
+        logger.info("pypdfium2 not available; PDF page rendering will be disabled")
+    except Exception:
+        pass
 from PIL import Image
 import pytesseract
 import io
@@ -22,6 +30,7 @@ class OCRExtractor:
         :param tesseract_path: Optional path to the tesseract executable.
         """
         self.tesseract_available = False
+        self.winocr_available = False
         tesseract_path = tesseract_path or os.getenv("TESSERACT_PATH")
 
         if not tesseract_path:
@@ -37,11 +46,20 @@ class OCRExtractor:
                 logger.warning(f"Tesseract configured at {tesseract_path} but failed to start: {e}")
         else:
             try:
-                # Fallback check if it's already in PATH
                 pytesseract.get_tesseract_version()
                 self.tesseract_available = True
+                logger.info("Tesseract found in PATH")
             except Exception:
-                logger.warning("Tesseract not found in standard paths or PATH environment variable.")
+                logger.info("Tesseract not found in PATH or standard locations")
+
+        # Quick check for PowerShell availability on Windows to indicate WinOCR possibility
+        if os.name == 'nt':
+            ps = shutil.which('powershell') or shutil.which('pwsh')
+            self.winocr_available = bool(ps)
+            if self.winocr_available:
+                logger.info(f"WinOCR available via PowerShell: {ps}")
+            else:
+                logger.info("WinOCR not available (powershell/pwsh not found)")
 
     def _find_tesseract(self) -> Optional[str]:
         if os.name == 'nt':
@@ -89,6 +107,7 @@ class OCRExtractor:
         """
         full_text = []
         try:
+            logger.debug(f"Starting PDF OCR extraction for: {pdf_path}")
             pdf = pdfium.PdfDocument(pdf_path)
             for i in range(len(pdf)):
                 page = pdf[i]
@@ -101,7 +120,9 @@ class OCRExtractor:
                 full_text.append(text)
                 
             pdf.close()
-            return "\n\n".join(full_text)
+            combined = "\n\n".join(full_text)
+            logger.debug(f"Completed PDF OCR extraction, total chars: {len(combined)}")
+            return combined
         except Exception as e:
             logger.error(f"Error during PDF OCR extraction: {str(e)}")
             return ""
@@ -120,17 +141,25 @@ class OCRExtractor:
             return ""
 
     async def _ocr_dispatch(self, pil_image: Image.Image) -> str:
-        """Internal dispatcher that tries WinOCR then Tesseract."""
-        if os.name == 'nt':
-            text = await self._extract_winocr(pil_image)
-            if text.strip():
-                return text
+        """Internal dispatcher that prefers WinOCR on Windows, then Tesseract."""
+        # Prefer WinOCR when available on Windows
+        if os.name == 'nt' and self.winocr_available:
+            try:
+                text = await self._extract_winocr(pil_image)
+                if text and text.strip():
+                    logger.debug("WinOCR produced text; using WinOCR result")
+                    return text
+                logger.debug("WinOCR returned no text; falling back")
+            except Exception as e:
+                logger.warning(f"WinOCR attempt failed: {e}")
 
+        # Next, try Tesseract if available
         if self.tesseract_available:
-            # Run Tesseract in a thread to keep event loop free
+            logger.debug("Using Tesseract OCR (pytesseract)")
             loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, pytesseract.image_to_string, pil_image)
-        
+            return await loop.run_in_executor(None, lambda: pytesseract.image_to_string(pil_image))
+
+        logger.warning("No OCR engine available (WinOCR/Tesseract). Returning empty string.")
         return ""
 
     async def _extract_winocr(self, pil_image: Image.Image) -> str:
@@ -150,7 +179,7 @@ class OCRExtractor:
             [Windows.Graphics.Imaging.BitmapDecoder, Windows.Graphics.Imaging, ContentType = WindowsRuntime] > $null
             [Windows.Storage.Streams.RandomAccessStreamReference, Windows.Storage.Streams, ContentType = WindowsRuntime] > $null
 
-            async function Get-OcrText($path) {{
+            function Get-OcrText($path) {{
                 $file = Get-Item $path
                 $stream = [Windows.Storage.Streams.RandomAccessStreamReference]::CreateFromFile($file).OpenReadAsync().GetResults()
                 $decoder = [Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream).GetResults()
@@ -159,11 +188,11 @@ class OCRExtractor:
                 $result = $engine.RecognizeAsync($bitmap).GetResults()
                 return $result.Text
             }}
-            Get-OcrText "{temp_file.replace('\\', '/')}"
+            Get-OcrText "{temp_file}"
             """
 
             process = await asyncio.create_subprocess_exec(
-                'powershell', '-Command', ps_script,
+                'powershell', '-NoProfile', '-NonInteractive', '-Command', ps_script,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -172,7 +201,7 @@ class OCRExtractor:
             if process.returncode == 0:
                 return stdout.decode('utf-8').strip()
             else:
-                logger.warning(f"WinOCR fallback: {stderr.decode('utf-8')}")
+                logger.debug(f"WinOCR stderr: {stderr.decode('utf-8')}")
                 return ""
         except Exception as e:
             logger.debug(f"WinOCR failed, falling back: {str(e)}")
@@ -192,12 +221,10 @@ class OCRExtractor:
         try:
             with pdfplumber.open(pdf_path) as pdf:
                 total_text = ""
-                for page in pdf.pages[:2]:  # Check first 2 pages
-                    text = page.extract_text()
-                    if text:
-                        total_text += text
-                
-                # If less than 50 characters extracted, treat as scanned
-                return len(total_text.strip()) < 50
+                for page in pdf.pages[:3]:  # Check first 3 pages
+                    text = page.extract_text() or ""
+                    total_text += text
+                # If less than 100 characters extracted, treat as scanned
+                return len(total_text.strip()) < 100
         except:
             return True

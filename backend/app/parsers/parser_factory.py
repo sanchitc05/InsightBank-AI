@@ -1,4 +1,3 @@
-import pdfplumber
 import os
 import logging
 import anyio
@@ -39,33 +38,48 @@ PARSER_MAP = {
 
 async def detect_bank(file_path: str) -> str:
     """Detect the bank from the file content (PDF or CSV) - Async version."""
-    # Check for CSV first
+    # Check for CSV first by extension
     if file_path.lower().endswith('.csv'):
+        logger.debug("detect_bank: CSV file detected by extension")
         return "CSV"
 
     try:
-        # Check if PDF is scanned and needs OCR
-        ocr = OCRExtractor()
-        if ocr.is_likely_scanned(file_path):
+        # First try cheap text extraction from the first few pages
+        try:
+            import pdfplumber
+        except Exception:
+            pdfplumber = None
+
+        total_text = ""
+        if pdfplumber:
+            with pdfplumber.open(file_path) as pdf:
+                for page in pdf.pages[:3]:
+                    total_text += (page.extract_text() or "")
+
+            if total_text and len(total_text.strip()) >= 100:
+                text_upper = total_text.upper()
+                for keyword, bank_code in BANK_KEYWORDS.items():
+                    if keyword in text_upper:
+                        logger.debug(f"detect_bank: matched {bank_code} via quick pdf text")
+                        return bank_code
+
+        # If not enough extractable text, attempt OCR only when an engine is likely available
+        logger.debug("detect_bank: insufficient quick text; attempting OCR if available")
+        tesseract_path = OCRExtractor.find_tesseract()
+        ocr = None
+        if os.name == 'nt' or tesseract_path:
+            ocr = OCRExtractor(tesseract_path=tesseract_path)
+
+        if ocr:
             text = await ocr.extract_from_pdf(file_path)
-        else:
-            async with anyio.open_file(file_path, "rb") as f:
-                # We still use pdfplumber for text extraction but we wrap it
-                # or just use it synchronously if it's fast enough.
-                # However, the OCR calls are the main bottleneck.
-                with pdfplumber.open(file_path) as pdf:
-                    if not pdf.pages:
-                        return "GENERIC"
-                    text = pdf.pages[0].extract_text() or ""
-        
-        text_upper = text.upper()
-        for keyword, bank_code in BANK_KEYWORDS.items():
-            if keyword.upper() in text_upper:
-                return bank_code
+            text_upper = (text or "").upper()
+            for keyword, bank_code in BANK_KEYWORDS.items():
+                if keyword in text_upper:
+                    logger.debug(f"detect_bank: matched {bank_code} via OCR text")
+                    return bank_code
 
     except Exception as e:
         logger.error(f"Error during bank detection: {str(e)}")
-        pass
 
     return "GENERIC"
 

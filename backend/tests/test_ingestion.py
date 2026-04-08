@@ -12,20 +12,47 @@ async def test_detect_bank_csv():
 
 @pytest.mark.asyncio
 @patch('app.parsers.parser_factory.OCRExtractor')
-@patch('pdfplumber.open')
-async def test_detect_bank_ocr(mock_pdf_open, mock_ocr_class):
-    # Mock PDF behavior
+async def test_detect_bank_ocr(mock_ocr_class):
+    # Mock PDF behavior by inserting a fake pdfplumber module into sys.modules
+    import types, sys
     mock_pdf = MagicMock()
     mock_pdf.pages = [MagicMock()]
-    mock_pdf_open.return_value.__enter__.return_value = mock_pdf
-    
+
+    class DummyCtx:
+        def __init__(self, val):
+            self.val = val
+        def __enter__(self):
+            return self.val
+        def __exit__(self, *args):
+            return False
+
+    fake_pdfplumber = types.ModuleType('pdfplumber')
+    fake_pdfplumber.open = lambda path: DummyCtx(mock_pdf)
+    sys.modules['pdfplumber'] = fake_pdfplumber
+
     # Mock OCRExtractor to return specific bank keyword
     mock_ocr_instance = mock_ocr_class.return_value
     mock_ocr_instance.is_likely_scanned.return_value = True
     mock_ocr_instance.extract_from_pdf = AsyncMock(return_value="This is an ICICI BANK statement")
-    
+
     bank = await detect_bank("scanned_icici.pdf")
     assert bank == "ICICI"
+
+
+@pytest.mark.asyncio
+@patch('app.parsers.parser_factory.OCRExtractor')
+@pytest.mark.parametrize("fragment,expected", [
+    ("This is an SBI Bank statement", "SBI"),
+    ("HDFC BANK transaction log", "HDFC"),
+    ("ICICI BANK monthly statement", "ICICI"),
+])
+async def test_detect_bank_various(mock_ocr_class, fragment, expected):
+    mock_ocr_instance = mock_ocr_class.return_value
+    mock_ocr_instance.is_likely_scanned.return_value = True
+    mock_ocr_instance.extract_from_pdf = AsyncMock(return_value=fragment)
+
+    bank = await detect_bank("scanned.pdf")
+    assert bank == expected
 
 @pytest.mark.asyncio
 async def test_csv_parser_mapping():

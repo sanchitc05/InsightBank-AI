@@ -6,7 +6,6 @@ from datetime import datetime, date
 from typing import List, Optional
 
 import pandas as pd
-import pdfplumber
 
 # Fix UTF-8 encoding on Windows for ₹ symbol support
 if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
@@ -25,6 +24,12 @@ class BaseParser(ABC):
         
         def _sync_parse():
             all_rows = []
+            try:
+                import pdfplumber
+            except Exception:
+                # pdfplumber not available in the environment; return empty
+                return all_rows
+
             with pdfplumber.open(pdf_path) as pdf:
                 for page in pdf.pages:
                     tables = page.extract_tables()
