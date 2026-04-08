@@ -49,6 +49,28 @@ class SBIParser(BaseParser):
         rows = []
         lines = text.split("\n")
         
+        # Merge multi-line transactions based on Date presence
+        merged_lines = []
+        buffer = ""
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            # Regex for date pattern typically found at start
+            if re.match(r'^\d{1,2}[/-](?:[a-zA-Z]{3}|\d{1,2})[/-]\d{2,4}', line):
+                if buffer:
+                    merged_lines.append(buffer)
+                buffer = line
+            else:
+                if buffer:
+                    buffer += " " + line
+                else:
+                    buffer = line
+        if buffer:
+            merged_lines.append(buffer)
+            
+        print(f"[OCR PARSER] Lines processed: {len(merged_lines)}")
+
         # Regex pattern: DATE DESCRIPTION - CREDIT DEBIT BALANCE
         # Handles optional credit/debit 0 values
         pattern = re.compile(
@@ -60,11 +82,7 @@ class SBIParser(BaseParser):
             r'([\d,]+\.?\d*|0\.00|0)$'                            # Balance
         )
 
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-                
+        for line in merged_lines:
             match = pattern.search(line)
             if match:
                 date_str = match.group(1)
@@ -72,6 +90,11 @@ class SBIParser(BaseParser):
                 credit = match.group(3)
                 debit = match.group(4)
                 balance = match.group(5)
+
+                # Date validation
+                valid_date = self._safe_parse_date(date_str)
+                if not valid_date:
+                    continue
 
                 # Clean description (remove underscores and extra spaces)
                 desc = desc.replace("_", " ")
@@ -85,11 +108,33 @@ class SBIParser(BaseParser):
                         return None
                     return str(v).strip()
 
+                c_norm = norm(credit)
+                d_norm = norm(debit)
+                b_norm = norm(balance)
+
+                # Confidence Filtering
+                if not c_norm and not d_norm and not b_norm:
+                    continue
+
+                # Extract merchant from description if UPI
+                merchant = None
+                if "UPI/DR" in desc or "UPI" in desc:
+                    parts = desc.split('/')
+                    if len(parts) > 3:
+                        merchant = parts[3].strip()
+
+                # Transaction Type inference
+                txn_type = "credit" if c_norm else "debit"
+
                 rows.append({
                     "date": date_str,
                     "description": desc,
-                    "credit": norm(credit),
-                    "debit": norm(debit),
-                    "balance": norm(balance),
+                    "merchant": merchant,
+                    "type": txn_type,
+                    "credit": c_norm,
+                    "debit": d_norm,
+                    "balance": b_norm,
                 })
+                
+        print(f"[OCR PARSER] Transactions found: {len(rows)}")
         return rows

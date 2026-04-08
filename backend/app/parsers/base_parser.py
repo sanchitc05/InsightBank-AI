@@ -17,7 +17,7 @@ if sys.stderr.encoding and sys.stderr.encoding.lower() != 'utf-8':
 class BaseParser(ABC):
     """Abstract base class for bank statement PDF parsers."""
 
-    async def parse(self, pdf_path: str) -> pd.DataFrame:
+    async def parse(self, pdf_path: str, ocr_text: Optional[str] = None) -> pd.DataFrame:
         """Open PDF and extract transactions from all pages (Async)."""
         import asyncio
         loop = asyncio.get_event_loop()
@@ -42,8 +42,8 @@ class BaseParser(ABC):
                                 all_rows.extend(rows)
                         
                         # If no tables found or no rows extracted from tables, try text extraction
-                        if not tables or not any(all_rows):
-                            print(f"DEBUG: Page {i+1}: No tables or rows found, trying text extraction")
+                        if not tables or len(all_rows) < 5:
+                            print(f"DEBUG: Page {i+1}: Insufficient rows from table, trying text extraction")
                             text = page.extract_text()
                             if text:
                                 rows = self.parse_text(text)
@@ -51,17 +51,15 @@ class BaseParser(ABC):
                                 if rows:
                                     print(f"DEBUG: Page {i+1}: Extracted {len(rows)} row(s) from text")
                 
-                if not any(all_rows):
-                    import os
-                    print("DEBUG: No rows extracted from PDF, checking for statement_ocr.txt")
-                    if os.path.exists("statement_ocr.txt"):
-                        with open("statement_ocr.txt", "r", encoding="utf-8") as f:
-                            ocr_text = f.read()
-                        if ocr_text.strip():
-                            rows = self.parse_text(ocr_text)
-                            if rows:
-                                all_rows.extend(rows)
-                                print(f"DEBUG: Extracted {len(rows)} row(s) from OCR text")
+                # Use OCR fallback if fewer than a threshold of rows were found
+                if len(all_rows) < 5:
+                    print(f"DEBUG: Only {len(all_rows)} rows extracted from PDF, checking for OCR text fallback")
+                    if ocr_text and ocr_text.strip():
+                        rows = self.parse_text(ocr_text)
+                        if rows:
+                            # Replace garbage rows with OCR result
+                            all_rows = rows
+                            print(f"[OCR FALLBACK] Extracted {len(rows)} row(s) from OCR text")
                                 
                 print(f"DEBUG: Total rows extracted: {len(all_rows)}")
             except Exception as e:
