@@ -29,6 +29,9 @@ export default function UploadCard({ onUploadSuccess }) {
         setSelectedFile(null);
         setProgress(0);
         if (onUploadSuccess) onUploadSuccess(res.data);
+      },
+      onError: () => {
+        setProgress(0);
       }
     });
   };

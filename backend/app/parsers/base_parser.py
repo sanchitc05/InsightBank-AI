@@ -26,30 +26,59 @@ class BaseParser(ABC):
             all_rows = []
             try:
                 import pdfplumber
-            except Exception:
-                # pdfplumber not available in the environment; return empty
-                return all_rows
+            except ImportError as e:
+                print(f"Error: pdfplumber is not installed: {str(e)}")
+                raise
 
-            with pdfplumber.open(pdf_path) as pdf:
-                for page in pdf.pages:
-                    tables = page.extract_tables()
-                    if tables:
-                        for table in tables:
-                            rows = self.parse_table(table)
-                            all_rows.extend(rows)
-
-                    # If no tables found, try text extraction
-                    if not tables:
-                        text = page.extract_text()
-                        if text:
-                            rows = self.parse_text(text)
-                            all_rows.extend(rows)
+            try:
+                with pdfplumber.open(pdf_path) as pdf:
+                    print(f"DEBUG: Opening PDF {pdf_path}. Total pages: {len(pdf.pages)}")
+                    for i, page in enumerate(pdf.pages):
+                        tables = page.extract_tables()
+                        if tables:
+                            print(f"DEBUG: Page {i+1}: Found {len(tables)} table(s)")
+                            for table in tables:
+                                rows = self.parse_table(table)
+                                all_rows.extend(rows)
+                        
+                        # If no tables found or no rows extracted from tables, try text extraction
+                        if not tables or not any(all_rows):
+                            print(f"DEBUG: Page {i+1}: No tables or rows found, trying text extraction")
+                            text = page.extract_text()
+                            if text:
+                                rows = self.parse_text(text)
+                                all_rows.extend(rows)
+                                if rows:
+                                    print(f"DEBUG: Page {i+1}: Extracted {len(rows)} row(s) from text")
+                
+                if not any(all_rows):
+                    import os
+                    print("DEBUG: No rows extracted from PDF, checking for statement_ocr.txt")
+                    if os.path.exists("statement_ocr.txt"):
+                        with open("statement_ocr.txt", "r", encoding="utf-8") as f:
+                            ocr_text = f.read()
+                        if ocr_text.strip():
+                            rows = self.parse_text(ocr_text)
+                            if rows:
+                                all_rows.extend(rows)
+                                print(f"DEBUG: Extracted {len(rows)} row(s) from OCR text")
+                                
+                print(f"DEBUG: Total rows extracted: {len(all_rows)}")
+            except Exception as e:
+                print(f"Error during PDF parsing: {str(e)}")
+                raise
+            
             return all_rows
 
         # Run the heavy parsing in a thread
-        all_rows = await loop.run_in_executor(None, _sync_parse)
+        try:
+            all_rows = await loop.run_in_executor(None, _sync_parse)
+        except Exception as e:
+            # Re-raise as a generic Exception the router can catch
+            raise Exception(f"PDF parsing failed: {str(e)}")
 
         if not all_rows:
+            print(f"WARNING: No rows extracted from {pdf_path}")
             return pd.DataFrame()
 
         df = pd.DataFrame(all_rows)

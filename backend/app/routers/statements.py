@@ -36,20 +36,30 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
         # Check if this is a scanned PDF without Tesseract
         from app.parsers.ocr_extractor import OCRExtractor
         
-        if OCRExtractor.is_likely_scanned(saved_path):
-            if OCRExtractor.find_tesseract() is None:
+        is_scanned = OCRExtractor.is_likely_scanned(saved_path)
+        if is_scanned:
+            tesseract_executable = OCRExtractor.find_tesseract()
+            if tesseract_executable is None:
+                print(f"ERROR: Scanned PDF detected but Tesseract not found at {saved_path}")
                 raise HTTPException(
                     status_code=422,
                     detail="This appears to be a scanned PDF. Please install Tesseract OCR or set TESSERACT_PATH in your .env file."
                 )
         
         # Detect bank and parse
-        bank_name = await detect_bank(saved_path)
+        try:
+            bank_name = await detect_bank(saved_path)
+            print(f"DEBUG: Detected bank: {bank_name}")
+        except Exception as e:
+            print(f"ERROR during bank detection: {str(e)}")
+            bank_name = "GENERIC"
+
         parser = await get_parser(bank_name)
         df = await parser.parse(saved_path)
 
         if df.empty:
-            raise HTTPException(status_code=422, detail="No transactions found in the PDF")
+            print(f"ERROR: No transactions found in {saved_path}")
+            raise HTTPException(status_code=422, detail=f"No transactions found in the {bank_name} statement. Please ensure the file is not password protected and has a supported format.")
 
         # Extract month/year from first transaction date
         if "date" in df.columns and not df["date"].dropna().empty:
@@ -57,8 +67,13 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
             if isinstance(first_date, str):
                 from app.parsers.base_parser import BaseParser
                 first_date = BaseParser.parse_date_static(first_date)
-            month = first_date.month
-            year = first_date.year
+            
+            if first_date:
+                month = first_date.month
+                year = first_date.year
+            else:
+                month = datetime.now().month
+                year = datetime.now().year
         else:
             month = datetime.now().month
             year = datetime.now().year
@@ -68,22 +83,25 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
         total_debit = float(df["debit"].sum()) if "debit" in df.columns else 0.0
 
         # Extract account number (last 4 digits pattern)
-        import pdfplumber
         account_number = None
-        with pdfplumber.open(saved_path) as pdf:
-            first_page_text = pdf.pages[0].extract_text() or ""
-            import re
-            # Look for account number patterns
-            acc_patterns = [
-                r'[Aa]ccount\s*(?:[Nn]o\.?|[Nn]umber)?\s*:?\s*[\w]*(\d{4})',
-                r'A/[Cc]\s*(?:[Nn]o\.?)?\s*:?\s*[\w]*(\d{4})',
-                r'(\d{4})\s*$',
-            ]
-            for pattern in acc_patterns:
-                match = re.search(pattern, first_page_text)
-                if match:
-                    account_number = "XXXX" + match.group(1)
-                    break
+        try:
+            import pdfplumber
+            with pdfplumber.open(saved_path) as pdf:
+                first_page_text = pdf.pages[0].extract_text() or ""
+                import re
+                # Look for account number patterns
+                acc_patterns = [
+                    r'[Aa]ccount\s*(?:[Nn]o\.?|[Nn]umber)?\s*:?\s*[\w]*(\d{4})',
+                    r'A/[Cc]\s*(?:[Nn]o\.?)?\s*:?\s*[\w]*(\d{4})',
+                    r'(\d{4})\s*$',
+                ]
+                for pattern in acc_patterns:
+                    match = re.search(pattern, first_page_text)
+                    if match:
+                        account_number = "XXXX" + match.group(1)
+                        break
+        except Exception as e:
+            print(f"WARNING: Account number extraction failed: {str(e)}")
 
 
         # Check for duplicate statement
@@ -170,12 +188,16 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
             total_debit=total_debit,
         )
 
-    except HTTPException:
-        raise
+    except HTTPException as he:
+        # Clean up file on expected errors too if needed, or just re-raise
+        if os.path.exists(saved_path):
+            os.remove(saved_path)
+        raise he
     except Exception as e:
         # Clean up file on error
         if os.path.exists(saved_path):
             os.remove(saved_path)
+        print(f"CRITICAL ERROR in upload_statement: {str(e)}")
         raise HTTPException(status_code=422, detail=f"Failed to parse PDF: {str(e)}")
 
 

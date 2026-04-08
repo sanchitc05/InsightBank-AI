@@ -120,8 +120,23 @@ class OCRExtractor:
                 full_text.append(text)
                 
             pdf.close()
+            
+            # Combine non-empty page text
+            full_text = [t for t in full_text if t and t.strip()]
             combined = "\n\n".join(full_text)
-            logger.debug(f"Completed PDF OCR extraction, total chars: {len(combined)}")
+            
+            # Add debug logs for text length
+            logger.debug(f"Completed PDF OCR extraction, text length before saving: {len(combined)}")
+            
+            # Save with correct encoding (utf-8)
+            try:
+                # Ensure the file is written to the root or current directory
+                with open("statement_ocr.txt", "w", encoding="utf-8") as f:
+                    f.write(combined)
+                logger.debug("Successfully wrote OCR output to statement_ocr.txt")
+            except Exception as e:
+                logger.error(f"Failed to write statement_ocr.txt: {e}")
+                
             return combined
         except Exception as e:
             logger.error(f"Error during PDF OCR extraction: {str(e)}")

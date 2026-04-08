@@ -45,21 +45,51 @@ class SBIParser(BaseParser):
         return rows
 
     def parse_text(self, text: str) -> List[dict]:
-        """Fallback: parse SBI text line by line."""
+        """Fallback: parse SBI text line by line using regex extraction."""
         rows = []
         lines = text.split("\n")
+        
+        # Regex pattern: DATE DESCRIPTION - CREDIT DEBIT BALANCE
+        # Handles optional credit/debit 0 values
         pattern = re.compile(
-            r'(\d{2}[/-]\d{2}[/-]\d{2,4})\s+(.+?)\s+'
-            r'([\d,]+\.\d{2})?\s*([\d,]+\.\d{2})?\s*([\d,]+\.\d{2})?'
+            r'^(\d{1,2}[/-](?:[a-zA-Z]{3}|\d{1,2})[/-]\d{2,4})\s+' # Date
+            r'(.*?)\s+'                                           # Description
+            r'(?:-\s+)?'                                          # Optional hyphen
+            r'([\d,]+\.?\d*|0\.00|0)?\s*'                         # Credit
+            r'([\d,]+\.?\d*|0\.00|0)?\s*'                         # Debit
+            r'([\d,]+\.?\d*|0\.00|0)$'                            # Balance
         )
+
         for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
             match = pattern.search(line)
             if match:
+                date_str = match.group(1)
+                desc = match.group(2)
+                credit = match.group(3)
+                debit = match.group(4)
+                balance = match.group(5)
+
+                # Clean description (remove underscores and extra spaces)
+                desc = desc.replace("_", " ")
+                desc = re.sub(r'\s+', ' ', desc).strip()
+                if desc.endswith('-'):
+                    desc = desc[:-1].strip()
+
+                # Normalize values (handle 0 values correctly)
+                def norm(v):
+                    if not v or str(v).strip() in ("0", "0.00"):
+                        return None
+                    return str(v).strip()
+
                 rows.append({
-                    "date": match.group(1),
-                    "description": match.group(2).strip(),
-                    "debit": match.group(3),
-                    "credit": match.group(4),
-                    "balance": match.group(5),
+                    "date": date_str,
+                    "description": desc,
+                    "credit": norm(credit),
+                    "debit": norm(debit),
+                    "balance": norm(balance),
                 })
         return rows
