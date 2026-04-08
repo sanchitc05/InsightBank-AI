@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useStatementsQuery, useAnalyticsSummaryQuery, useCategoriesQuery, useTrendQuery, useTransactionsQuery } from '../hooks/useQueries';
+import { useStatements } from '../hooks/useStatements';
+import { useDashboardSummary, useCategoryBreakdown, useMonthlyTrends } from '../hooks/useAnalytics';
+import { useTransactions } from '../hooks/useTransactions';
 import { formatINR } from '../utils/format';
 import { SkeletonBox, SkeletonCard } from '../components/Skeleton';
 import ErrorBanner from '../components/ErrorBanner';
@@ -19,19 +21,26 @@ function SkeletonLoader({ width = '100%', height = '60px', className = '' }) {
 function SummaryCard({ label, value, sublabel, icon, accentColor }) {
   return (
     <div
-      className="glass-card p-6 rounded-xl"
+      className="glass-card p-6"
       style={{
-        background: 'rgba(30, 41, 59, 0.6)',
-        border: `1px solid ${accentColor}20`,
+        borderLeft: `4px solid ${accentColor}`,
       }}
     >
       <div className="flex items-center justify-between mb-3">
-        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{label}</span>
-        <span style={{ fontSize: '24px' }}>{icon}</span>
+        <span className="text-xs font-semibold tracking-wider uppercase opacity-60">{label}</span>
+        <div 
+          className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
+          style={{ background: `${accentColor}15`, color: accentColor }}
+        >
+          {icon}
+        </div>
       </div>
-      <p style={{ color: accentColor, fontSize: '24px', fontWeight: 'bold' }}>{value}</p>
+      <p className="text-2xl font-bold tracking-tight mb-1" style={{ color: '#f8fafc' }}>{value}</p>
       {sublabel && (
-        <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '4px' }}>{sublabel}</p>
+        <p className="text-xs opacity-50 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: accentColor }} />
+          {sublabel}
+        </p>
       )}
     </div>
   );
@@ -43,7 +52,7 @@ export default function Dashboard() {
   const [selectedId, setSelectedId] = useState(null);
 
   // Fetch statements using React Query
-  const statementsQuery = useStatementsQuery();
+  const statementsQuery = useStatements();
   const statements = statementsQuery.data || [];
 
   // Set default selection
@@ -54,12 +63,11 @@ export default function Dashboard() {
   }, [statements]);
 
   // Fetch analytics data
-  const summaryQuery = useAnalyticsSummaryQuery(selectedId);
-  const categoriesQuery = useCategoriesQuery(selectedId);
-  const trendQuery = useTrendQuery();
-  const transactionsQuery = useTransactionsQuery(
-    selectedId ? { statement_id: selectedId, page_size: 500 } : null,
-    !!selectedId
+  const summaryQuery = useDashboardSummary(selectedId);
+  const categoriesQuery = useCategoryBreakdown(selectedId);
+  const trendQuery = useMonthlyTrends();
+  const transactionsQuery = useTransactions(
+    selectedId ? { statement_id: selectedId, page_size: 500 } : null
   );
 
   // Memoize balance data
@@ -118,23 +126,22 @@ export default function Dashboard() {
   if (!statementsQuery.isLoading && statements.length === 0) {
     return (
       <PageWrapper>
-        <div className="flex flex-col items-center justify-center min-h-screen px-4">
-          <div className="text-center">
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>📊</div>
-            <h2 style={{ color: 'var(--text-primary)', fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>
-              No statements uploaded yet
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
-              Upload your first bank statement to see detailed analytics and insights.
-            </p>
-            <button
-              onClick={() => navigate('/upload')}
-              className="px-6 py-3 rounded-lg font-medium text-white"
-              style={{ background: 'var(--color-primary)', cursor: 'pointer' }}
-            >
-              Upload your first statement →
-            </button>
+        <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center">
+          <div className="w-24 h-24 rounded-3xl bg-slate-800/50 flex items-center justify-center text-5xl mb-8 border border-white/10 shadow-2xl animate-bounce">
+            📊
           </div>
+          <h2 className="text-3xl font-bold text-white mb-4 tracking-tight">
+            No statements uploaded yet
+          </h2>
+          <p className="text-slate-400 max-w-md mb-10 leading-relaxed text-lg">
+            Upload your first bank statement to see detailed analytics and insights. Let's get started!
+          </p>
+          <button
+            onClick={() => navigate('/upload')}
+            className="premium-button text-lg px-8 py-4"
+          >
+            Upload your first statement <span className="ml-2">→</span>
+          </button>
         </div>
       </PageWrapper>
     );
@@ -155,22 +162,23 @@ export default function Dashboard() {
       <div className="p-8" style={{ background: 'var(--bg-primary)', minHeight: '100vh' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           {/* ── HEADER ────────────────────────────────────── */}
-          <div className="mb-8">
-            <h1 style={{ color: 'var(--text-primary)', fontSize: '32px', fontWeight: 'bold', marginBottom: '24px' }}>
-              📊 Financial Dashboard
+          <div className="mb-10">
+            <h1 className="text-4xl font-extrabold mb-8 tracking-tight flex items-center gap-3">
+              <span className="text-gradient">Financial Dashboard</span>
             </h1>
-            <div className="flex gap-2 flex-wrap">
+            
+            <div className="flex gap-2 flex-wrap bg-slate-900/40 p-2 rounded-2xl border border-white/5 w-fit">
               {statements.map((stmt) => (
                 <button
                   key={stmt.id}
                   onClick={() => setSelectedId(stmt.id)}
-                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                  className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                    selectedId === stmt.id 
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' 
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
                   style={{
-                    background: selectedId === stmt.id ? 'var(--color-primary)' : 'var(--bg-card)',
-                    color: selectedId === stmt.id ? 'white' : 'var(--text-secondary)',
-                    border: selectedId === stmt.id ? 'none' : '1px solid var(--border-color)',
                     cursor: 'pointer',
-                    boxShadow: selectedId === stmt.id ? '0 0 20px rgba(99, 102, 241, 0.3)' : 'none',
                   }}
                 >
                   {stmt.bank_name} · {new Date(stmt.year, stmt.month - 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
@@ -261,41 +269,49 @@ export default function Dashboard() {
                 Top Merchants
               </h2>
               {transactionsQuery.isError && <ErrorBanner error={transactionsQuery.error} onRetry={transactionsQuery.refetch} label="merchants" />}
-              <div className="glass-card p-6">
+              <div className="glass-card p-8">
                 {transactionsQuery.isLoading ? (
-                  <>
-                    <SkeletonLoader height="40px" style={{ marginBottom: '12px' }} />
-                    <SkeletonLoader height="40px" style={{ marginBottom: '12px' }} />
-                    <SkeletonLoader height="40px" style={{ marginBottom: '12px' }} />
-                    <SkeletonLoader height="40px" style={{ marginBottom: '12px' }} />
+                  <div className="space-y-6">
                     <SkeletonLoader height="40px" />
-                  </>
+                    <SkeletonLoader height="40px" />
+                    <SkeletonLoader height="40px" />
+                    <SkeletonLoader height="40px" />
+                    <SkeletonLoader height="40px" />
+                  </div>
                 ) : topMerchants.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {topMerchants.map((merchant, idx) => {
                       const barWidth = (merchant.total / maxMerchantAmount) * 100;
+                      // Use a few distinct colors for merchants
+                      const colors = ['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
+                      const activeColor = colors[idx % colors.length];
+                      
                       return (
-                        <div key={idx} className="flex items-center gap-3">
-                          <span style={{ color: 'var(--text-secondary)', fontSize: '14px', flex: '0 0 180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {merchant.merchant}
-                          </span>
-                          <div
-                            className="h-1.5 rounded-full flex-1"
-                            style={{
-                              background: '#00d4ff',
-                              width: `${barWidth}%`,
-                              minWidth: '20px',
-                            }}
-                          />
-                          <span style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: 'bold', flex: '0 0 120px', textAlign: 'right' }}>
-                            {formatINR(merchant.total)}
-                          </span>
+                        <div key={idx} className="group flex flex-col gap-2">
+                          <div className="flex justify-between items-end px-1">
+                            <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors capitalize">
+                              {merchant.merchant.toLowerCase()}
+                            </span>
+                            <span className="text-sm font-bold text-white">
+                              {formatINR(merchant.total)}
+                            </span>
+                          </div>
+                          <div className="h-2.5 bg-slate-800/50 rounded-full w-full overflow-hidden border border-white/5">
+                            <div
+                              className="h-full rounded-full transition-all duration-1000 ease-out flex items-center justify-end px-2"
+                              style={{
+                                background: `linear-gradient(90deg, ${activeColor}dd 0%, ${activeColor} 100%)`,
+                                width: `${barWidth}%`,
+                                boxShadow: `0 0 10px ${activeColor}40`
+                              }}
+                            />
+                          </div>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No merchant data available</p>
+                  <p className="text-slate-500 text-center py-8">No merchant data available</p>
                 )}
               </div>
             </div>

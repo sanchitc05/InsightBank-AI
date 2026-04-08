@@ -8,26 +8,6 @@ const api = axios.create({
 // Store for active abort controllers
 const abortControllers = new Map();
 
-// Helper to create request with cancellation
-const makeRequest = async (key, requestFn) => {
-  // Cancel previous request if it exists
-  if (abortControllers.has(key)) {
-    abortControllers.get(key).abort();
-  }
-
-  const controller = new AbortController();
-  abortControllers.set(key, controller);
-
-  try {
-    const result = await requestFn(controller.signal);
-    abortControllers.delete(key);
-    return result;
-  } catch (error) {
-    abortControllers.delete(key);
-    throw error;
-  }
-};
-
 // Cancel all ongoing requests (useful on unmount or app exit)
 export const cancelAllRequests = () => {
   abortControllers.forEach(controller => controller.abort());

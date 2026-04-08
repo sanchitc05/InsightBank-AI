@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import useStatements from '../hooks/useStatements';
+import { useState, useEffect } from 'react';
+import { useStatements } from '../hooks/useStatements';
+import { useTransactions } from '../hooks/useTransactions';
 import useDebounce from '../hooks/useDebounce';
 import PageWrapper from '../components/PageWrapper';
 import MonthPicker from '../components/MonthPicker';
 import TransactionTable from '../components/TransactionTable';
-import { getTransactions } from '../services/api';
 
 const ALL_CATEGORIES = [
   'All', 'Food', 'Rent', 'Utilities', 'Shopping', 'EMI', 'Salary',
@@ -12,70 +12,77 @@ const ALL_CATEGORIES = [
 ];
 
 export default function TransactionsPage() {
-  const { statements, loading: stmtLoading } = useStatements();
   const [selectedId, setSelectedId] = useState(null);
   const [category, setCategory] = useState('All');
   const [type, setType] = useState('');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 400);
   const [page, setPage] = useState(1);
-  const [data, setData] = useState({ total: 0, data: [] });
-  const [loading, setLoading] = useState(false);
   const pageSize = 50;
 
+  // Fetch statements
+  const statementsQuery = useStatements();
+  const statements = statementsQuery.data || [];
+
+  // Set default selection
   useEffect(() => {
-    if (statements.length > 0 && !selectedId) setSelectedId(statements[0].id);
+    if (statements.length > 0 && !selectedId) {
+      setSelectedId(statements[0].id);
+    }
   }, [statements, selectedId]);
 
-  const fetchTxns = useCallback(async () => {
-    if (!selectedId) return;
-    setLoading(true);
-    try {
-      const params = { statement_id: selectedId, page, page_size: pageSize };
-      if (category !== 'All') params.category = category;
-      if (type) params.type = type;
-      if (debouncedSearch) params.search = debouncedSearch;
-      const res = await getTransactions(params);
-      setData(res.data);
-    } catch (err) {}
-    finally { setLoading(false); }
-  }, [selectedId, category, type, debouncedSearch, page]);
+  // Build query params
+  const queryParams = {
+    statement_id: selectedId,
+    page,
+    page_size: pageSize,
+    ...(category !== 'All' && { category }),
+    ...(type && { type }),
+    ...(debouncedSearch && { search: debouncedSearch })
+  };
 
-  useEffect(() => { fetchTxns(); }, [fetchTxns]);
+  // Fetch transactions
+  const transactionsQuery = useTransactions(
+    queryParams
+  );
+
+  const data = transactionsQuery.data?.data || { total: 0, data: [] };
+  const loading = transactionsQuery.isLoading;
 
   useEffect(() => { setPage(1); }, [selectedId, category, type, debouncedSearch]);
 
   return (
     <PageWrapper>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl font-extrabold mb-6"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          Transactions
+        <h1 className="text-4xl font-black mb-8">
+          <span className="text-gradient">Transactions</span>
         </h1>
 
         {/* Filters */}
-        <div className="glass-card p-5 mb-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <MonthPicker statements={statements} selectedId={selectedId} onSelect={setSelectedId} loading={stmtLoading} />
+        <div className="glass-card mb-8 p-1 border-none bg-slate-900/40">
+          <div className="flex flex-wrap items-center gap-3 p-4">
+            <MonthPicker statements={statements} selectedId={selectedId} onSelect={setSelectedId} loading={statementsQuery.isLoading} />
 
-            <select value={category} onChange={e => setCategory(e.target.value)}
-                    className="px-3 py-2.5 rounded-xl text-sm border-none outline-none cursor-pointer"
-                    style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
-              {ALL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <div className="flex items-center gap-3 bg-slate-800/40 p-1.5 rounded-2xl border border-white/5">
+              <select value={category} onChange={e => setCategory(e.target.value)}
+                      className="px-4 py-2 rounded-xl text-sm border-none outline-none cursor-pointer bg-slate-900 text-slate-300 font-medium hover:bg-slate-950 transition-colors">
+                {ALL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
 
-            <select value={type} onChange={e => setType(e.target.value)}
-                    className="px-3 py-2.5 rounded-xl text-sm border-none outline-none cursor-pointer"
-                    style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
-              <option value="">All Types</option>
-              <option value="debit">Debits Only</option>
-              <option value="credit">Credits Only</option>
-            </select>
+              <select value={type} onChange={e => setType(e.target.value)}
+                      className="px-4 py-2 rounded-xl text-sm border-none outline-none cursor-pointer bg-slate-900 text-slate-300 font-medium hover:bg-slate-950 transition-colors">
+                <option value="">All Types</option>
+                <option value="debit">Debits Only</option>
+                <option value="credit">Credits Only</option>
+              </select>
+            </div>
 
-            <input type="text" placeholder="🔍 Search transactions..." value={search}
-                   onChange={e => setSearch(e.target.value)}
-                   className="flex-1 min-w-48 px-4 py-2.5 rounded-xl text-sm outline-none"
-                   style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }} />
+            <div className="flex-1 min-w-[300px] relative transition-all duration-300 focus-within:shadow-[0_0_30px_-10px_rgba(99,102,241,0.2)]">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
+              <input type="text" placeholder="Search by merchant, description..." value={search}
+                     onChange={e => setSearch(e.target.value)}
+                     className="w-full pl-11 pr-5 py-3.5 rounded-2xl text-sm outline-none bg-slate-900 border border-white/5 text-white placeholder-slate-500 focus:border-indigo-500/50 transition-all font-medium" />
+            </div>
           </div>
         </div>
 

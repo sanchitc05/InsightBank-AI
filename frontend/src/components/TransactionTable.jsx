@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 
 const CAT_COLORS = {
-  Food: '#FF6B6B', Rent: '#4ECDC4', Utilities: '#45B7D1', Shopping: '#96CEB4',
-  EMI: '#DDA0DD', Salary: '#98D8C8', Transport: '#F7DC6F', Entertainment: '#BB8FCE',
-  Healthcare: '#82E0AA', Education: '#85C1E9', Uncategorized: '#999999',
+  Food: '#F87171', Rent: '#60A5FA', Utilities: '#34D399', Shopping: '#FBBF24',
+  EMI: '#A78BFA', Salary: '#10B981', Transport: '#F472B6', Entertainment: '#818CF8',
+  Healthcare: '#fb7185', Education: '#2dd4bf', Uncategorized: '#94a3b8',
 };
 
 export default function TransactionTable({ transactions, loading, page, pageSize, total, onPageChange }) {
@@ -28,7 +28,15 @@ export default function TransactionTable({ transactions, loading, page, pageSize
   const totalPages = Math.ceil(total / pageSize);
 
   if (loading) {
-    return <div className="space-y-2">{[...Array(8)].map((_, i) => <div key={i} className="skeleton h-12 w-full" />)}</div>;
+    return (
+      <div className="glass-card overflow-hidden border-none bg-slate-900/40">
+        <div className="p-1 space-y-1">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-14 w-full bg-slate-800/20 animate-pulse rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (!sorted.length) {
@@ -53,49 +61,58 @@ export default function TransactionTable({ transactions, loading, page, pageSize
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border-color)' }}>
-        <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+      <div className="glass-card overflow-hidden border-none bg-slate-900/40 shadow-2xl">
+        <table className="w-full border-separate border-spacing-0">
           <thead>
-            <tr style={{ background: 'var(--bg-secondary)' }}>
+            <tr className="bg-slate-950/50">
               {columns.map(col => (
                 <th key={col.key}
                     onClick={() => handleSort(col.key)}
-                    className="px-4 py-3 text-left text-xs font-semibold cursor-pointer select-none"
-                    style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)' }}>
-                  {col.label} {sortField === col.key && (sortDir === 'asc' ? '↑' : '↓')}
+                    className="px-6 py-4 text-left text-[10px] sm:text-xs font-black uppercase tracking-widest cursor-pointer select-none border-b border-white/5 text-slate-400 hover:text-indigo-400 transition-colors">
+                  <div className="flex items-center gap-2">
+                    {col.label}
+                    <span className="text-indigo-500/50">
+                      {sortField === col.key ? (sortDir === 'asc' ? '↑' : '↓') : '•'}
+                    </span>
+                  </div>
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-white/[0.03]">
             {sorted.map((txn, idx) => (
               <tr key={txn.id || idx}
-                  className="transition-colors duration-150"
-                  style={{ borderBottom: '1px solid var(--border-color)' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card-hover)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                <td className="px-4 py-3 text-sm whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
+                  className="group hover:bg-slate-800/40 transition-all duration-300">
+                <td className="px-6 py-4 text-xs font-mono text-slate-400 group-hover:text-slate-300 transition-colors">
                   {txn.txn_date || '—'}
                 </td>
-                <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--text-primary)', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <td className="px-6 py-4 text-sm font-bold text-white max-w-[200px] truncate group-hover:translate-x-1 transition-transform">
                   {txn.merchant || '—'}
                 </td>
-                <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <td className="px-6 py-4 text-xs text-slate-500 max-w-[250px] truncate italic">
                   {txn.description || '—'}
                 </td>
-                <td className="px-4 py-3">
-                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold"
-                        style={{ background: `${CAT_COLORS[txn.category] || '#999'}20`, color: CAT_COLORS[txn.category] || '#999' }}>
+                <td className="px-6 py-4">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
+                        style={{ background: `${CAT_COLORS[txn.category] || '#94a3b8'}20`, color: CAT_COLORS[txn.category] || '#94a3b8', border: `1px solid ${CAT_COLORS[txn.category] || '#94a3b8'}30` }}>
                     {txn.category}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm font-semibold tabular-nums" style={{ color: txn.debit > 0 ? '#ef4444' : 'var(--text-muted)' }}>
-                  {txn.debit > 0 ? `₹${Number(txn.debit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
+                <td className="px-6 py-4 text-sm font-bold tabular-nums">
+                  {txn.debit > 0 ? (
+                    <span className="text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]">
+                      -₹{Number(txn.debit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  ) : <span className="text-slate-700">—</span>}
                 </td>
-                <td className="px-4 py-3 text-sm font-semibold tabular-nums" style={{ color: txn.credit > 0 ? '#10b981' : 'var(--text-muted)' }}>
-                  {txn.credit > 0 ? `₹${Number(txn.credit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
+                <td className="px-6 py-4 text-sm font-bold tabular-nums">
+                  {txn.credit > 0 ? (
+                    <span className="text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                      +₹{Number(txn.credit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  ) : <span className="text-slate-700">—</span>}
                 </td>
-                <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                <td className="px-6 py-4 text-sm font-bold tabular-nums text-indigo-300">
                   ₹{Number(txn.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </td>
               </tr>
@@ -106,22 +123,20 @@ export default function TransactionTable({ transactions, loading, page, pageSize
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 px-2">
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}
+        <div className="flex items-center justify-between mt-8 px-4 py-6 glass-card border-none bg-slate-900/20">
+          <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">
+            Showing <span className="text-white">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)}</span> of <span className="text-white">{total}</span>
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-4">
             <button onClick={() => onPageChange(page - 1)} disabled={page <= 1}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium border-none cursor-pointer disabled:opacity-40"
-                    style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)' }}>
+                    className="premium-button px-6 py-2.5 text-xs uppercase tracking-widest disabled:opacity-30 disabled:hover:scale-100">
               ← Prev
             </button>
-            <span className="px-3 py-1.5 text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <div className="flex items-center px-4 rounded-xl bg-slate-900/80 border border-white/5 text-xs font-mono font-bold text-indigo-400 shadow-inner">
               {page} / {totalPages}
-            </span>
+            </div>
             <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium border-none cursor-pointer disabled:opacity-40"
-                    style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)' }}>
+                    className="premium-button px-6 py-2.5 text-xs uppercase tracking-widest disabled:opacity-30 disabled:hover:scale-100">
               Next →
             </button>
           </div>

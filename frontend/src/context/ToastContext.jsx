@@ -1,6 +1,14 @@
-import { createContext, useState, useCallback, useRef, useEffect } from 'react';
+import { createContext, useState, useCallback, useRef, useEffect, useContext } from 'react';
 
 export const ToastContext = createContext();
+
+export const useToast = () => {
+  const context = useContext(ToastContext);
+  if (!context) {
+    throw new Error('useToast must be used within a ToastProvider');
+  }
+  return context;
+};
 
 const MAX_VISIBLE_TOASTS = 3;
 const DEFAULT_DURATION = 3000;

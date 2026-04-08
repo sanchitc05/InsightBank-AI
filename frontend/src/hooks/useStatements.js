@@ -1,25 +1,41 @@
-import { useState, useEffect, useCallback } from 'react';
-import { getStatements } from '../services/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import * as api from '../api/api';
 
-export default function useStatements() {
-  const [statements, setStatements] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+/**
+ * Hook for statement-related operations
+ */
+export const useStatements = () => {
+  return useQuery({
+    queryKey: ['statements'],
+    queryFn: api.fetchStatements,
+  });
+};
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await getStatements();
-      setStatements(res.data);
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load statements');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+/**
+ * Hook for uploading a statement
+ */
+export const useUploadStatement = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.uploadStatement,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['statements'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+    },
+  });
+};
 
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { statements, loading, error, refetch: fetch };
-}
+/**
+ * Hook for deleting a statement
+ */
+export const useDeleteStatement = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteStatement,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['statements'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+  });
+};

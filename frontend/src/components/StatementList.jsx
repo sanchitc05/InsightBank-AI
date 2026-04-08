@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { deleteStatement } from '../services/api';
+import { useDeleteStatement } from '../hooks/useStatements';
 
 const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -7,20 +6,12 @@ const BANK_COLORS = {
   SBI: '#1a5276', HDFC: '#004b87', ICICI: '#f58220', AXIS: '#97144d', KOTAK: '#ed1c24', GENERIC: '#64748b',
 };
 
-export default function StatementList({ statements, loading, onDeleted }) {
-  const [deletingId, setDeletingId] = useState(null);
+export default function StatementList({ statements, loading }) {
+  const deleteMutation = useDeleteStatement();
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this statement and all its transactions?')) return;
-    setDeletingId(id);
-    try {
-      await deleteStatement(id);
-      if (onDeleted) onDeleted();
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to delete');
-    } finally {
-      setDeletingId(null);
-    }
+    deleteMutation.mutate(id);
   };
 
   if (loading) {
@@ -47,7 +38,7 @@ export default function StatementList({ statements, loading, onDeleted }) {
     <div className="space-y-3">
       {statements.map((stmt, idx) => (
         <div key={stmt.id}
-             className="glass-card p-5 flex items-center justify-between animate-fade-in-up"
+             className="glass-card p-5 flex items-center justify-between animate-fade-in-up border-none group bg-slate-800/30 hover:bg-slate-800/50 transition-all duration-300"
              style={{ animationDelay: `${idx * 60}ms` }}>
           <div className="flex items-center gap-4">
             {/* Bank badge */}
@@ -56,36 +47,35 @@ export default function StatementList({ statements, loading, onDeleted }) {
               {stmt.bank_name}
             </div>
             <div>
-              <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
+              <p className="font-bold text-white mb-0.5">
                 {MONTH_NAMES[stmt.month]} {stmt.year}
                 {stmt.account_number && (
-                  <span className="ml-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                    • A/C {stmt.account_number}
+                  <span className="ml-2 text-[10px] font-mono text-slate-500 bg-slate-900/50 px-2 py-0.5 rounded border border-white/5">
+                    {stmt.account_number}
                   </span>
                 )}
               </p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
                 Uploaded {new Date(stmt.uploaded_at).toLocaleDateString()}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-5">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold" style={{ color: '#10b981' }}>
+            <div className="text-right hidden sm:block font-mono leading-tight">
+              <p className="text-xs font-bold text-emerald-400">
                 +₹{Number(stmt.total_credit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </p>
-              <p className="text-sm font-semibold" style={{ color: '#ef4444' }}>
+              <p className="text-xs font-bold text-rose-400 mt-1">
                 -₹{Number(stmt.total_debit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </p>
             </div>
             <button onClick={() => handleDelete(stmt.id)}
-                    disabled={deletingId === stmt.id}
-                    className="p-2 rounded-lg transition-all duration-200 border-none cursor-pointer"
-                    style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '14px' }}
-                    onMouseEnter={e => e.target.style.background = 'rgba(239, 68, 68, 0.2)'}
-                    onMouseLeave={e => e.target.style.background = 'rgba(239, 68, 68, 0.1)'}>
-              {deletingId === stmt.id ? '⏳' : '🗑️'}
+                    disabled={deleteMutation.isPending && deleteMutation.variables === stmt.id}
+                    className="p-3 rounded-xl bg-rose-500/5 text-rose-500 hover:bg-rose-500/10 hover:shadow-lg hover:shadow-rose-500/5 transition-all duration-300 border border-transparent hover:border-rose-500/20 active:scale-95 group-hover:opacity-100 sm:opacity-0">
+              {deleteMutation.isPending && deleteMutation.variables === stmt.id ? (
+                <div className="w-4 h-4 border-2 border-rose-500/30 border-t-rose-500 rounded-full animate-spin" />
+              ) : '🗑️'}
             </button>
           </div>
         </div>

@@ -52,7 +52,7 @@ class InsightsEngine:
                     "type": "anomaly",
                     "severity": "alert",
                     "title": "Unusual Transaction Detected",
-                    "body": f"₹{row['debit']:,.2f} paid to {merchant} on {date_str} is significantly higher than your average spend of ₹{mean:,.2f}.",
+                    "body": f"**₹{row['debit']:,.2f}** paid to **{merchant}** on _{date_str}_ is significantly higher than your average spend of **₹{mean:,.2f}**.",
                 })
 
             return insights
@@ -90,7 +90,7 @@ class InsightsEngine:
                     "type": "pattern",
                     "severity": "info",
                     "title": f"Top Merchant: {merchant}",
-                    "body": f"You spent ₹{data['total']:,.2f} across {int(data['count'])} transaction(s) at {merchant} this month.",
+                    "body": f"You spent **₹{data['total']:,.2f}** across _{int(data['count'])} transaction(s)_ at **{merchant}** this month.",
                 })
 
             return insights
@@ -113,15 +113,15 @@ class InsightsEngine:
             if savings_rate > 20:
                 severity = "info"
                 title = "Excellent Savings Rate"
-                body = f"You saved {savings_rate:.1f}% of your income this month. Keep it up!"
+                body = f"You saved **{savings_rate:.1f}%** of your income this month. Keep it up!"
             elif savings_rate >= 10:
                 severity = "info"
                 title = "Moderate Savings Rate"
-                body = f"You saved {savings_rate:.1f}% of your income this month. Consider pushing toward 20%."
+                body = f"You saved **{savings_rate:.1f}%** of your income this month. Consider pushing toward **20%**."
             else:
                 severity = "warn"
                 title = "Low Savings Rate"
-                body = f"Your savings rate is only {savings_rate:.1f}% this month. Review your top spending categories to find cuts."
+                body = f"Your savings rate is only **{savings_rate:.1f}%** this month. Review your top spending categories to find cuts."
 
             insights.append({
                 "type": "tip",
@@ -157,7 +157,7 @@ class InsightsEngine:
                         "type": "tip",
                         "severity": "warn",
                         "title": f"{cat} is {pct:.0f}% of your budget",
-                        "body": f"{cat} spending took up {pct:.0f}% of your total expenses this month. Consider setting a monthly limit.",
+                        "body": f"**{cat}** spending took up **{pct:.0f}%** of your total expenses this month. Consider setting a monthly limit.",
                     })
 
             return insights
@@ -200,7 +200,7 @@ class InsightsEngine:
                 "type": "pattern",
                 "severity": "info",
                 "title": "Peak Spending Day",
-                "body": f"You tend to spend the most on {weekday_name}s, averaging ₹{peak_avg:,.2f} per transaction.",
+                "body": f"You tend to spend the most on **{weekday_name}s**, averaging **₹{peak_avg:,.2f}** per transaction.",
             })
 
             return insights
