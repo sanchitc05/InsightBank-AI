@@ -186,11 +186,14 @@ InsightBank-AI/
 ├── docs/
 │   ├── model-selection-playbook.md
 │   ├── runbook.md
-│   └── token-optimization-guide.md
+│   ├── token-optimization-guide.md
+│   ├── PROJECT_RULES.md            # GSD methodology guidelines
+│   ├── GSD-STYLE.md                # Style and conventions
+│   └── model_capabilities.yaml     # Model selection criteria
 │
-├── PROJECT_RULES.md                # GSD methodology guidelines
-├── GSD-STYLE.md                    # Style and conventions
-├── model_capabilities.yaml         # Model selection criteria
+├── .github/workflows/ci.yml        # CI pipeline (lint + test)
+├── .env.example                    # Environment variable reference
+├── CONTRIBUTING.md                 # Contributor guide
 ├── LICENSE                         # MIT License
 └── README.md                       # This file
 ```
@@ -306,15 +309,7 @@ Currently supported PDF formats:
 
 ## 🤝 Development Workflow
 
-This project follows the **GSD (Get Shit Done)** methodology:
-
-1. **Spec** → Define requirements until `FINALIZED`
-2. **Plan** → Break into phases and tasks
-3. **Execute** → Implement with atomic commits
-4. **Verify** → Empirical evidence of completion
-5. **Commit** → Atomic commits per task
-
-See [PROJECT_RULES.md](PROJECT_RULES.md) and [GSD-STYLE.md](GSD-STYLE.md) for detailed guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
 
 ### Making Changes
 

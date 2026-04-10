@@ -4,8 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from app.routers import statements, transactions, insights, analytics
+from app.routers import statements, transactions, insights
 from app.database import engine, Base, SessionLocal, seed_categories
+from app.api_version import API_V1_PREFIX
 
 load_dotenv()
 
@@ -41,11 +42,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(statements.router, prefix="/api/v1", tags=["Statements"])
-app.include_router(transactions.router, prefix="/api/v1", tags=["Transactions"])
-app.include_router(insights.router, prefix="/api/v1", tags=["Analytics & Insights"])
-app.include_router(analytics.router, prefix="/api/v1", tags=["Analytics"])
+# Include routers — single versioned prefix from api_version.py
+app.include_router(statements.router, prefix=API_V1_PREFIX, tags=["Statements"])
+app.include_router(transactions.router, prefix=API_V1_PREFIX, tags=["Transactions"])
+app.include_router(insights.router, prefix=API_V1_PREFIX, tags=["Analytics & Insights"])
 
 
 @app.get("/", tags=["Health"])
