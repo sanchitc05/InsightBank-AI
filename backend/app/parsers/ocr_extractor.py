@@ -52,15 +52,6 @@ class OCRExtractor:
             except Exception:
                 logger.info("Tesseract not found in PATH or standard locations")
 
-        # Quick check for PowerShell availability on Windows to indicate WinOCR possibility
-        if os.name == 'nt':
-            ps = shutil.which('powershell') or shutil.which('pwsh')
-            self.winocr_available = bool(ps)
-            if self.winocr_available:
-                logger.info(f"WinOCR available via PowerShell: {ps}")
-            else:
-                logger.info("WinOCR not available (powershell/pwsh not found)")
-
     def _find_tesseract(self) -> Optional[str]:
         if os.name == 'nt':
             common_paths = [
@@ -156,75 +147,14 @@ class OCRExtractor:
             return ""
 
     async def _ocr_dispatch(self, pil_image: Image.Image) -> str:
-        """Internal dispatcher that prefers WinOCR on Windows, then Tesseract."""
-        # Prefer WinOCR when available on Windows
-        if os.name == 'nt' and self.winocr_available:
-            try:
-                text = await self._extract_winocr(pil_image)
-                if text and text.strip():
-                    logger.debug("WinOCR produced text; using WinOCR result")
-                    return text
-                logger.debug("WinOCR returned no text; falling back")
-            except Exception as e:
-                logger.warning(f"WinOCR attempt failed: {e}")
-
-        # Next, try Tesseract if available
+        """Internal dispatcher that uses Tesseract for OCR extraction."""
         if self.tesseract_available:
             logger.debug("Using Tesseract OCR (pytesseract)")
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, lambda: pytesseract.image_to_string(pil_image))
 
-        logger.warning("No OCR engine available (WinOCR/Tesseract). Returning empty string.")
+        logger.warning("No OCR engine available (Tesseract not found). Returning empty string.")
         return ""
-
-    async def _extract_winocr(self, pil_image: Image.Image) -> str:
-        """Windows Native OCR via PowerShell Bridge."""
-        temp_file = None
-        try:
-            # Save PIL image to temporary png
-            fd, temp_path = tempfile.mkstemp(suffix=".png")
-            os.close(fd)
-            temp_file = temp_path
-            pil_image.save(temp_file, format="PNG")
-
-            # PowerShell snippet for Windows.Media.Ocr
-            ps_script = f"""
-            $ErrorActionPreference = 'Stop'
-            [Windows.Media.Ocr.OcrEngine, Windows.Media.Ocr, ContentType = WindowsRuntime] > $null
-            [Windows.Graphics.Imaging.BitmapDecoder, Windows.Graphics.Imaging, ContentType = WindowsRuntime] > $null
-            [Windows.Storage.Streams.RandomAccessStreamReference, Windows.Storage.Streams, ContentType = WindowsRuntime] > $null
-
-            function Get-OcrText($path) {{
-                $file = Get-Item $path
-                $stream = [Windows.Storage.Streams.RandomAccessStreamReference]::CreateFromFile($file).OpenReadAsync().GetResults()
-                $decoder = [Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream).GetResults()
-                $bitmap = $decoder.GetSoftwareBitmapAsync().GetResults()
-                $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
-                $result = $engine.RecognizeAsync($bitmap).GetResults()
-                return $result.Text
-            }}
-            Get-OcrText "{temp_file}"
-            """
-
-            process = await asyncio.create_subprocess_exec(
-                'powershell', '-NoProfile', '-NonInteractive', '-Command', ps_script,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await process.communicate()
-
-            if process.returncode == 0:
-                return stdout.decode('utf-8').strip()
-            else:
-                logger.debug(f"WinOCR stderr: {stderr.decode('utf-8')}")
-                return ""
-        except Exception as e:
-            logger.debug(f"WinOCR failed, falling back: {str(e)}")
-            return ""
-        finally:
-            if temp_file and os.path.exists(temp_file):
-                try: os.remove(temp_file)
-                except: pass
 
     @staticmethod
     def is_likely_scanned(pdf_path: str) -> bool:

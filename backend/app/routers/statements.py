@@ -54,8 +54,16 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
             print(f"ERROR during bank detection: {str(e)}")
             bank_name = "GENERIC"
 
+        # Run OCR if scanned PDF detected
+        ocr_text = None
+        if is_scanned:
+            print(f"DEBUG: Scanned PDF detected, running OCR extraction...")
+            ocr_engine = OCRExtractor()
+            ocr_text = await ocr_engine.extract_from_pdf(saved_path)
+            print(f"DEBUG: OCR extracted {len(ocr_text)} chars, {len(ocr_text.splitlines())} lines")
+
         parser = await get_parser(bank_name)
-        df = await parser.parse(saved_path)
+        df = await parser.parse(saved_path, ocr_text=ocr_text)
 
         if df.empty:
             print(f"ERROR: No transactions found in {saved_path}")

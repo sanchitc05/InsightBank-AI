@@ -34,16 +34,21 @@ class BaseParser(ABC):
                 with pdfplumber.open(pdf_path) as pdf:
                     print(f"DEBUG: Opening PDF {pdf_path}. Total pages: {len(pdf.pages)}")
                     for i, page in enumerate(pdf.pages):
+                        rows_before = len(all_rows)
+
+                        # ── Layout A: try structured tables first ──
                         tables = page.extract_tables()
                         if tables:
                             print(f"DEBUG: Page {i+1}: Found {len(tables)} table(s)")
                             for table in tables:
                                 rows = self.parse_table(table)
                                 all_rows.extend(rows)
-                        
-                        # If no tables found or no rows extracted from tables, try text extraction
-                        if not tables or len(all_rows) < 5:
-                            print(f"DEBUG: Page {i+1}: Insufficient rows from table, trying text extraction")
+
+                        rows_from_tables = len(all_rows) - rows_before
+
+                        # ── Layout B: text fallback when tables yield nothing ──
+                        if rows_from_tables == 0:
+                            print(f"DEBUG: Page {i+1}: No rows from tables, falling back to text extraction")
                             text = page.extract_text()
                             if text:
                                 rows = self.parse_text(text)
