@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/dashboard_preview.png" alt="InsightBank AI Dashboard" width="100%" />
+  <img src="assets\Screenshot 2026-04-11 152747.png" alt="InsightBank AI Dashboard" width="100%" />
 
   # 🏦 InsightBank AI
 
