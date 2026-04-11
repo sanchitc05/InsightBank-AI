@@ -1,3 +1,4 @@
+import math
 import os
 import uuid
 from datetime import datetime
@@ -12,6 +13,21 @@ from app.parsers.parser_factory import detect_bank, get_parser
 from app.analytics.categorizer import Categorizer
 
 router = APIRouter()
+
+
+def _safe_float(val) -> float:
+    """Convert value to float, treating NaN/None/empty as 0.0.
+
+    Python's float('nan') is truthy, so the common `or 0` guard
+    does NOT catch it.  This helper does.
+    """
+    if val is None:
+        return 0.0
+    try:
+        f = float(val)
+        return 0.0 if math.isnan(f) else f
+    except (ValueError, TypeError):
+        return 0.0
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
 
@@ -87,8 +103,8 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
             year = datetime.now().year
 
         # Compute totals
-        total_credit = float(df["credit"].sum()) if "credit" in df.columns else 0.0
-        total_debit = float(df["debit"].sum()) if "debit" in df.columns else 0.0
+        total_credit = _safe_float(df["credit"].sum()) if "credit" in df.columns else 0.0
+        total_debit = _safe_float(df["debit"].sum()) if "debit" in df.columns else 0.0
 
         # Extract account number (last 4 digits pattern)
         account_number = None
@@ -148,9 +164,9 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
         txn_count = 0
         for _, row in df.iterrows():
             description = str(row.get("description", "")) if row.get("description") else ""
-            debit = float(row.get("debit", 0) or 0)
-            credit = float(row.get("credit", 0) or 0)
-            balance = float(row.get("balance", 0) or 0)
+            debit = _safe_float(row.get("debit", 0))
+            credit = _safe_float(row.get("credit", 0))
+            balance = _safe_float(row.get("balance", 0))
 
             # Parse date
             txn_date = row.get("date")

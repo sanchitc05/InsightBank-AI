@@ -1,3 +1,4 @@
+import math
 import re
 import sys
 import io
@@ -96,6 +97,11 @@ class BaseParser(ABC):
         if "balance" in df.columns:
             df["balance"] = df["balance"].apply(self.clean_amount)
 
+        # Defense-in-depth: ensure no NaN survives in numeric columns
+        for col in ["debit", "credit", "balance"]:
+            if col in df.columns:
+                df[col] = df[col].fillna(0.0)
+
         return df
 
     @abstractmethod
@@ -113,6 +119,8 @@ class BaseParser(ABC):
         if val is None or val == "" or val == "None":
             return 0.0
         if isinstance(val, (int, float)):
+            if math.isnan(float(val)):
+                return 0.0
             return float(val)
         val = str(val).strip()
         val = val.replace(",", "").replace("₹", "").replace("INR", "")
