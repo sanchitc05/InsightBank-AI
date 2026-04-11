@@ -61,3 +61,7 @@ def test_upload_parsing_failure():
     files = {"file": ("empty.pdf", b"%PDF-1.4\n1 0 obj\n<<\n/Title (Test)\n>>\nendobj\ntrailer\n<<\n/Root 1 0 R\n>>\n%%EOF", "application/pdf")}
     response = client.post("/api/v1/statements/upload", files=files)
     
+    # It should fail with 422 because it cannot detect a bank or find transactions
+    assert response.status_code == 422
+    assert "detail" in response.json()
+    assert "parser" in response.json()

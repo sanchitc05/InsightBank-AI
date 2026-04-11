@@ -4,7 +4,7 @@ from sqlalchemy import pool
 from alembic import context
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'app')))
 from app.database import Base, build_database_url
 
 # this is the Alembic Config object, which provides
