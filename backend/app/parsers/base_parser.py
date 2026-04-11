@@ -2,6 +2,7 @@ import math
 import re
 import sys
 import io
+import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, date
 from typing import List, Optional
@@ -13,6 +14,15 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 if sys.stderr.encoding and sys.stderr.encoding.lower() != 'utf-8':
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+
+# Setup logger
+logger = logging.getLogger(__name__)
+
+
+class ParserError(Exception):
+    """Custom exception for bank statement parsing errors."""
+    pass
 
 
 class BaseParser(ABC):
@@ -28,19 +38,19 @@ class BaseParser(ABC):
             try:
                 import pdfplumber
             except ImportError as e:
-                print(f"Error: pdfplumber is not installed: {str(e)}")
-                raise
+                logger.error(f"pdfplumber is not installed: {str(e)}")
+                raise ParserError(f"pdfplumber is not installed: {str(e)}")
 
             try:
                 with pdfplumber.open(pdf_path) as pdf:
-                    print(f"DEBUG: Opening PDF {pdf_path}. Total pages: {len(pdf.pages)}")
+                    logger.debug(f"Opening PDF {pdf_path}. Total pages: {len(pdf.pages)}")
                     for i, page in enumerate(pdf.pages):
                         rows_before = len(all_rows)
 
                         # ── Layout A: try structured tables first ──
                         tables = page.extract_tables()
                         if tables:
-                            print(f"DEBUG: Page {i+1}: Found {len(tables)} table(s)")
+                            logger.debug(f"Page {i+1}: Found {len(tables)} table(s)")
                             for table in tables:
                                 rows = self.parse_table(table)
                                 all_rows.extend(rows)
@@ -49,28 +59,28 @@ class BaseParser(ABC):
 
                         # ── Layout B: text fallback when tables yield nothing ──
                         if rows_from_tables == 0:
-                            print(f"DEBUG: Page {i+1}: No rows from tables, falling back to text extraction")
+                            logger.debug(f"Page {i+1}: No rows from tables, falling back to text extraction")
                             text = page.extract_text()
                             if text:
                                 rows = self.parse_text(text)
                                 all_rows.extend(rows)
                                 if rows:
-                                    print(f"DEBUG: Page {i+1}: Extracted {len(rows)} row(s) from text")
+                                    logger.debug(f"Page {i+1}: Extracted {len(rows)} row(s) from text")
                 
                 # Use OCR fallback if fewer than a threshold of rows were found
                 if len(all_rows) < 5:
-                    print(f"DEBUG: Only {len(all_rows)} rows extracted from PDF, checking for OCR text fallback")
+                    logger.debug(f"Only {len(all_rows)} rows extracted from PDF, checking for OCR text fallback")
                     if ocr_text and ocr_text.strip():
                         rows = self.parse_text(ocr_text)
                         if rows:
                             # Replace garbage rows with OCR result
                             all_rows = rows
-                            print(f"[OCR FALLBACK] Extracted {len(rows)} row(s) from OCR text")
+                            logger.info(f"[OCR FALLBACK] Extracted {len(rows)} row(s) from OCR text")
                                 
-                print(f"DEBUG: Total rows extracted: {len(all_rows)}")
+                logger.debug(f"Total rows extracted: {len(all_rows)}")
             except Exception as e:
-                print(f"Error during PDF parsing: {str(e)}")
-                raise
+                logger.error(f"Error during PDF parsing: {str(e)}", exc_info=True)
+                raise ParserError(f"Error during PDF parsing: {str(e)}")
             
             return all_rows
 
@@ -78,11 +88,11 @@ class BaseParser(ABC):
         try:
             all_rows = await loop.run_in_executor(None, _sync_parse)
         except Exception as e:
-            # Re-raise as a generic Exception the router can catch
-            raise Exception(f"PDF parsing failed: {str(e)}")
+            # Re-raise as a ParserError the router can catch
+            raise ParserError(f"PDF parsing failed: {str(e)}")
 
         if not all_rows:
-            print(f"WARNING: No rows extracted from {pdf_path}")
+            logger.warning(f"No rows extracted from {pdf_path}")
             return pd.DataFrame()
 
         df = pd.DataFrame(all_rows)

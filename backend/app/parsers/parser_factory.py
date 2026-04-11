@@ -8,6 +8,7 @@ from app.parsers.hdfc_parser import HDFCParser
 from app.parsers.icici_parser import ICICIParser
 from app.parsers.csv_parser import CSVParser
 from app.parsers.ocr_extractor import OCRExtractor
+from app.parsers.base_parser import ParserError
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -79,7 +80,8 @@ async def detect_bank(file_path: str) -> str:
                     return bank_code
 
     except Exception as e:
-        logger.error(f"Error during bank detection: {str(e)}")
+        logger.error(f"Error during bank detection: {str(e)}", exc_info=True)
+        raise ParserError(f"Bank detection failed: {str(e)}")
 
     return "GENERIC"
 

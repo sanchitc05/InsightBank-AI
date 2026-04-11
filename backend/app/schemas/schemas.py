@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime, date
 from decimal import Decimal
@@ -20,8 +20,7 @@ class StatementResponse(StatementBase):
     file_name: str
     uploaded_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StatementUploadResponse(BaseModel):
@@ -50,8 +49,7 @@ class TransactionResponse(TransactionBase):
     id: int
     statement_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TransactionListResponse(BaseModel):
@@ -70,8 +68,7 @@ class CategoryResponse(BaseModel):
     color: Optional[str] = None
     icon: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Insight Schemas ────────────────────────────────────────
@@ -88,8 +85,7 @@ class InsightResponse(InsightBase):
     statement_id: int
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InsightGenerateResponse(BaseModel):
@@ -134,3 +130,15 @@ class CompareResponse(BaseModel):
     statements: List[StatementResponse]
     summary: List[AnalyticsSummary]
     categories: List[List[CategoryBreakdown]]
+
+
+# ── Error Schemas ──────────────────────────────────────────
+
+class ErrorResponse(BaseModel):
+    detail: str
+
+
+class ParserErrorResponse(BaseModel):
+    detail: str
+    error_code: Optional[str] = "PARSER_ERROR"
+    bank_name: Optional[str] = None

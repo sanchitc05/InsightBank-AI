@@ -34,11 +34,11 @@ export default function Navbar() {
   return (
     <nav
       ref={navRef}
-      className="sticky top-0 z-50 border-b"
+      className="sticky top-0 z-50"
       style={{
-        background: 'rgba(15, 23, 42, 0.85)',
+        background: 'rgba(6, 14, 32, 0.75)',
         backdropFilter: 'blur(16px)',
-        borderColor: 'var(--border-color)',
+        borderBottom: '1px solid rgba(186, 158, 255, 0.1)',
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -46,15 +46,15 @@ export default function Navbar() {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 no-underline">
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #06b6d4)' }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-glow"
+              style={{ background: 'var(--gradient-primary)' }}
             >
               🏦
             </div>
             <span
-              className="text-lg font-bold"
+              className="text-lg font-bold display-font"
               style={{
-                background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+                background: 'var(--gradient-primary)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
               }}
@@ -73,11 +73,11 @@ export default function Navbar() {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className="px-4 py-2 rounded-lg text-sm font-medium no-underline transition-all duration-200 flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg text-sm font-medium no-underline transition-all duration-300 flex items-center gap-2 hover:bg-white/5"
                   style={{
-                    color: isActive ? '#e0e7ff' : 'var(--text-secondary)',
-                    background: isActive ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                    border: isActive ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
+                    color: isActive ? 'var(--color-primary)' : 'var(--text-secondary)',
+                    background: isActive ? 'rgba(186, 158, 255, 0.1)' : 'transparent',
+                    border: isActive ? '1px solid rgba(186, 158, 255, 0.2)' : '1px solid transparent',
                   }}
                 >
                   <span>{link.icon}</span>

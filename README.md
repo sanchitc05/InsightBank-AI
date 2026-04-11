@@ -45,16 +45,17 @@
 Built on a modern, robust, and lightning-fast technology stack.
 
 ### 🌐 Frontend
-- **Framework:** React 19 + Vite for optimal developer experience and builds
-- **State Management:** React Query for reliable data synchronization and caching
-- **Visualization:** Recharts for dynamic, interactive data visualization
-- **Styling:** Tailwind CSS for a responsive, sleek, and premium design
+- **Framework:** React 19 + Vite (Next-gen development)
+- **State Management:** React Query (Enterprise-grade caching)
+- **Visualization:** Recharts (Dynamic interactive data)
+- **Styling:** Premium Vanilla CSS (Custom tokens, Glassmorphism, Glow effects)
+- **Testing:** `Vitest` + `React Testing Library`
 
 ### ⚙️ Backend
-- **Framework:** FastAPI running on Uvicorn ASGI server
-- **Database:** MySQL 8.0 with SQLAlchemy 2.0 ORM & Alembic migrations
-- **Data Pipeline:** `pdfplumber`, `pypdf2`, and `pytesseract` for robust OCR
-- **AI/ML Engine:** `scikit-learn` & `fuzzywuzzy` for pattern matching and insights
+- **Framework:** FastAPI (High performance, type-safe)
+- **Database:** MySQL 8.0 with SQLAlchemy 2.0 ORM
+- **Data Pipeline:** `pdfplumber` & `pytesseract` (OCR-enabled parsing)
+- **Testing:** `Pytest` (Atomic and functional validation)
 
 ---
 
@@ -141,12 +142,14 @@ Our REST API is built to be extensible and easy to integrate:
 We welcome external maintainers! To contribute:
 
 1. Fork the repository.
-2. Create a dedicated feature branch (`git checkout -b feature/amazing-feature`).
-3. Commit using conventional commit formats (`feat(scope): added amazing thing`).
-4. Ensure tests run successfully (`pytest` / `npm run test`).
+2. Read the [CONTRIBUTING.md](docs/CONTRIBUTING.md) guide.
+3. Create a dedicated feature branch.
+4. Ensure all tests pass:
+   - Backend: `pytest`
+   - Frontend: `npm test`
 5. Open a Pull Request!
 
-Check out [CONTRIBUTING.md](CONTRIBUTING.md) and [PROJECT_RULES.md](docs/PROJECT_RULES.md) for more details.
+Check out [PROJECT_RULES.md](docs/PROJECT_RULES.md) for more details.
 
 ---
 

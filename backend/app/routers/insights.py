@@ -65,7 +65,7 @@ def get_analytics_trend(bank_name: Optional[str] = None, db: Session = Depends(g
     return result
 
 
-@router.get("/analytics/compare")
+@router.get("/analytics/compare", response_model=CompareResponse)
 def get_analytics_compare(ids: str = Query(...), db: Session = Depends(get_db)):
     """Compare two or more statements side by side."""
     id_list = [int(x.strip()) for x in ids.split(",") if x.strip()]

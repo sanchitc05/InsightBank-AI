@@ -1,13 +1,15 @@
 # ROADMAP.md
 
-> **Current Phase**: 2
-> **Milestone**: v1.0 (Restoration & Polish)
+> **Current Phase**: 3
+> **Milestone**: v1.0 (Professionalization & Validation)
 
 ## Must-Haves (from SPEC)
-- [ ] Restore OCR (WinOCR + pypdfium2)
-- [ ] Support CSV ingestion
-- [ ] Implement `pytest` suite for ingestion
+- [x] Restore OCR (WinOCR + pypdfium2)
+- [x] Support CSV ingestion
+- [x] Implement basic `pytest` suite for ingestion
 - [ ] Apply Stitch UI tokens and scroll transitions
+- [ ] Implement robust Vitest frontend suite
+- [ ] Document ParserError responses in OpenAPI
 
 ## Phases
 
@@ -17,7 +19,7 @@
 **Deliverables**: SPEC.md, ROADMAP.md, .gsd structure.
 
 ### Phase 2: OCR & Ingestion Restoration
-**Status**: 🚧 IN PROGRESS
+**Status**: ✅ COMPLETED
 **Objective**: Restore missing backend functionality and add CSV support.
 **Deliverables**: `ocr_extractor.py`, `parser_factory.py` updates, `test_ingestion.py`.
 

@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
+import ScrollProgress from './components/ScrollProgress';
 import ToastProvider, { useToast } from './context/ToastContext';
 import ToastContainer from './components/Toast';
 
@@ -47,6 +48,11 @@ export default function App() {
       <ToastProvider>
         <QueryClientBridge>
           <BrowserRouter>
+            <ScrollProgress />
+            <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
+              <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full" />
+              <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full" />
+            </div>
             <Navbar />
             <ToastContainer />
             <main className="flex-1">

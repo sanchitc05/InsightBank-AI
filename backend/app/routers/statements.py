@@ -1,6 +1,7 @@
 import math
 import os
 import uuid
+import logging
 from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -8,9 +9,20 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.statement import Statement
 from app.models.transaction import Transaction
-from app.schemas.schemas import StatementResponse, StatementUploadResponse
+from app.schemas.schemas import (
+    StatementResponse, 
+    StatementUploadResponse, 
+    ParserErrorResponse, 
+    ErrorResponse
+)
 from app.parsers.parser_factory import detect_bank, get_parser
 from app.analytics.categorizer import Categorizer
+from app.parsers.base_parser import ParserError
+from app.exceptions import StatementParsingException, ParserErrorResponse
+
+# Setup logger
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 
@@ -32,7 +44,14 @@ def _safe_float(val) -> float:
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
 
 
-@router.post("/statements/upload", response_model=StatementUploadResponse)
+@router.post(
+    "/statements/upload", 
+    response_model=StatementUploadResponse,
+    responses={
+        422: {"model": ParserErrorResponse, "description": "Parsing failure or invalid statement format"},
+        400: {"model": ErrorResponse, "description": "Invalid file type or request parameter"}
+    }
+)
 async def upload_statement(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Upload a bank statement PDF, parse it, and store transactions."""
     if not file.filename.lower().endswith(".pdf"):
@@ -56,34 +75,50 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
         if is_scanned:
             tesseract_executable = OCRExtractor.find_tesseract()
             if tesseract_executable is None:
-                print(f"ERROR: Scanned PDF detected but Tesseract not found at {saved_path}")
-                raise HTTPException(
-                    status_code=422,
-                    detail="This appears to be a scanned PDF. Please install Tesseract OCR or set TESSERACT_PATH in your .env file."
+                logger.error(f"Scanned PDF detected but Tesseract not found at {saved_path}")
+                raise StatementParsingException(
+                    detail="This appears to be a scanned PDF. Please install Tesseract OCR or set TESSERACT_PATH in your .env file.",
+                    parser="OCR_ENGINE",
+                    context={"error_code": "OCR_MISSING", "bank_name": "UNKNOWN"}
                 )
         
         # Detect bank and parse
         try:
             bank_name = await detect_bank(saved_path)
-            print(f"DEBUG: Detected bank: {bank_name}")
+            logger.debug(f"Detected bank: {bank_name}")
+        except ParserError as e:
+            logger.error(f"Bank detection failed specifically: {str(e)}")
+            bank_name = "GENERIC"
         except Exception as e:
-            print(f"ERROR during bank detection: {str(e)}")
+            logger.error(f"Unexpected error during bank detection: {str(e)}", exc_info=True)
             bank_name = "GENERIC"
 
         # Run OCR if scanned PDF detected
         ocr_text = None
         if is_scanned:
-            print(f"DEBUG: Scanned PDF detected, running OCR extraction...")
+            logger.debug("Scanned PDF detected, running OCR extraction...")
             ocr_engine = OCRExtractor()
             ocr_text = await ocr_engine.extract_from_pdf(saved_path)
-            print(f"DEBUG: OCR extracted {len(ocr_text)} chars, {len(ocr_text.splitlines())} lines")
+            logger.debug(f"OCR extracted {len(ocr_text)} chars, {len(ocr_text.splitlines())} lines")
 
         parser = await get_parser(bank_name)
-        df = await parser.parse(saved_path, ocr_text=ocr_text)
+        try:
+            df = await parser.parse(saved_path, ocr_text=ocr_text)
+        except ParserError as e:
+            logger.error(f"Parser failed specifically for {bank_name}: {str(e)}")
+            raise StatementParsingException(
+                detail=str(e),
+                parser=bank_name,
+                context={"error_code": "PARSER_MISMATCH"}
+            )
 
         if df.empty:
-            print(f"ERROR: No transactions found in {saved_path}")
-            raise HTTPException(status_code=422, detail=f"No transactions found in the {bank_name} statement. Please ensure the file is not password protected and has a supported format.")
+            logger.error(f"No transactions found in {saved_path} using {bank_name} parser")
+            raise StatementParsingException(
+                detail=f"No transactions found in the {bank_name} statement.",
+                parser=bank_name,
+                context={"error_code": "EMPTY_STATEMENT"}
+            )
 
         # Extract month/year from first transaction date
         if "date" in df.columns and not df["date"].dropna().empty:
@@ -212,6 +247,16 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
             total_debit=total_debit,
         )
 
+    except StatementParsingException as spe:
+        if os.path.exists(saved_path):
+            os.remove(saved_path)
+        logger.error(f"Statement parsing error in upload_statement: {spe.detail}")
+        raise spe
+    except ParserError as e:
+        if os.path.exists(saved_path):
+            os.remove(saved_path)
+        logger.error(f"Parser error in upload_statement: {str(e)}")
+        raise HTTPException(status_code=422, detail=str(e))
     except HTTPException as he:
         # Clean up file on expected errors too if needed, or just re-raise
         if os.path.exists(saved_path):
@@ -221,8 +266,8 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
         # Clean up file on error
         if os.path.exists(saved_path):
             os.remove(saved_path)
-        print(f"CRITICAL ERROR in upload_statement: {str(e)}")
-        raise HTTPException(status_code=422, detail=f"Failed to parse PDF: {str(e)}")
+        logger.critical(f"CRITICAL ERROR in upload_statement: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error during PDF processing")
 
 
 @router.get("/statements", response_model=list[StatementResponse])
