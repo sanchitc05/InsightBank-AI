@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import UploadCard from '../components/UploadCard'
 import { useUploadStatement } from '../hooks/useStatements'
 
@@ -34,7 +34,7 @@ describe('UploadCard', () => {
             mutate: vi.fn(),
             isPending: false
         })
-        const { rerender } = render(<UploadCard />)
+        render(<UploadCard />)
         expect(screen.queryByText('Analyze Statement')).not.toBeInTheDocument()
     })
 

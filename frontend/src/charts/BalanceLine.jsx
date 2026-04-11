@@ -1,5 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { formatINR, formatDate } from '../utils/format';
+import { formatINR } from '../utils/format';
 
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {

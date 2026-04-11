@@ -4,7 +4,7 @@ import { useStatements } from '../hooks/useStatements';
 import { useDashboardSummary, useCategoryBreakdown, useMonthlyTrends } from '../hooks/useAnalytics';
 import { useTransactions } from '../hooks/useTransactions';
 import { formatINR } from '../utils/format';
-import { SkeletonBox, SkeletonCard } from '../components/Skeleton';
+import { SkeletonBox } from '../components/Skeleton';
 import ErrorBanner from '../components/ErrorBanner';
 import PageWrapper from '../components/PageWrapper';
 import IncomeExpenseBar from '../charts/IncomeExpenseBar';
@@ -13,7 +13,7 @@ import BalanceLine from '../charts/BalanceLine';
 import SpendHeatmap from '../charts/SpendHeatmap';
 
 // ── Skeleton Loader Component ──────────────────
-function SkeletonLoader({ width = '100%', height = '60px', className = '' }) {
+function SkeletonLoader({ width = '100%', height = '60px' }) {
   return <SkeletonBox width={width} height={height} />;
 }
 

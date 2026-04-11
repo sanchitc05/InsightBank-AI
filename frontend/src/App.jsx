@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
 import ScrollProgress from './components/ScrollProgress';
-import ToastProvider, { useToast } from './context/ToastContext';
+import ToastProvider from './context/ToastContext';
 import ToastContainer from './components/Toast';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -27,7 +27,6 @@ import { useQueryClient } from '@tanstack/react-query';
 
 function QueryClientBridge({ children }) {
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
 
   useEffect(() => {
     // Set default options for all queries

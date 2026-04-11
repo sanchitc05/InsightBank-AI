@@ -1,14 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { useStatements } from '../hooks/useStatements';
 import PageWrapper from '../components/PageWrapper';
-import { useToast } from '../hooks/useToast';
 import UploadCard from '../components/UploadCard';
 import StatementList from '../components/StatementList';
 
 export default function UploadPage() {
   const { data: statements = [], isLoading: loading } = useStatements();
   const navigate = useNavigate();
-  const { showToast } = useToast();
 
   const handleUploadSuccess = () => {
     // Basic navigation or additional feedback if needed
