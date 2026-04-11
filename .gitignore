@@ -44,6 +44,7 @@ uploads/
 *.db
 *.sqlite3
 _tmp_ocr_pages/
+backend/_tmp_ocr_pages/
 statement_ocr.txt
 test_output.txt
 tmp_winocr.ps1
