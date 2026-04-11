@@ -7,8 +7,6 @@ from dotenv import load_dotenv
 from app.routers import statements, transactions, insights
 from app.database import engine, Base, SessionLocal, seed_categories
 from app.api_version import API_V1_PREFIX
-from app.exceptions import StatementParsingException, ParserErrorResponse
-from fastapi.responses import JSONResponse
 
 load_dotenv()
 
@@ -34,18 +32,6 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
-
-@app.exception_handler(StatementParsingException)
-async def statement_parsing_exception_handler(request, exc: StatementParsingException):
-    return JSONResponse(
-        status_code=422,
-        content={
-            "detail": exc.detail,
-            "parser": exc.parser,
-            "line": exc.line,
-            "context": exc.context
-        },
-    )
 
 # CORS configuration
 app.add_middleware(
