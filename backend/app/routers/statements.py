@@ -300,8 +300,3 @@ def delete_statement(stmt_id: int, db: Session = Depends(get_db)):
     # Also delete the uploaded file
     file_path = os.path.join(UPLOAD_DIR, stmt.file_name)
     if os.path.exists(file_path):
-        os.remove(file_path)
-
-    db.delete(stmt)
-    db.commit()
-    return {"message": "Deleted successfully"}
