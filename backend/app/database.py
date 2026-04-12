@@ -6,16 +6,27 @@ from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
 load_dotenv()
 
-# Prefer DB_* variables for MySQL, fallback to DATABASE_URL or SQLite
+# Strict Database Config: MySQL only for production reliability
 def build_database_url():
     db_host = os.getenv("DB_HOST")
     db_port = os.getenv("DB_PORT")
     db_user = os.getenv("DB_USER")
     db_pass = os.getenv("DB_PASS")
     db_name = os.getenv("DB_NAME")
+    
     if all([db_host, db_port, db_user, db_pass, db_name]):
         return f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
-    return os.getenv("DATABASE_URL", "sqlite:///./bank_analyzer.db")
+    
+    # Check if we are intentionally using a DATABASE_URL (e.g. for testing)
+    env_url = os.getenv("DATABASE_URL")
+    if env_url:
+        return env_url
+
+    raise RuntimeError(
+        "CRITICAL: MySQL configuration is missing. "
+        "Please set DB_HOST, DB_PORT, DB_USER, DB_PASS, and DB_NAME in your .env file. "
+        "SQLite fallback is disabled to prevent silent data loss/fragmentation."
+    )
 
 DATABASE_URL = build_database_url()
 

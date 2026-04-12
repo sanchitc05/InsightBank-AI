@@ -1,13 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Menu, X, Wallet, LogOut, LayoutDashboard, Upload, BarChart3, MessageSquare, Layers } from 'lucide-react';
 
 const NAV_LINKS = [
-  { to: '/',             label: 'Dashboard',    icon: '📊' },
-  { to: '/upload',       label: 'Upload',       icon: '📤' },
-  { to: '/transactions', label: 'Transactions', icon: '💳' },
-  { to: '/insights',     label: 'Insights',     icon: '💡' },
-  { to: '/compare',      label: 'Compare',      icon: '⚖️' },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/upload', label: 'Upload', icon: Upload },
+  { to: '/transactions', label: 'Transactions', icon: BarChart3 },
+  { to: '/insights', label: 'Insights', icon: MessageSquare },
+  { to: '/compare', label: 'Compare', icon: Layers },
 ];
 
 export default function Navbar() {
@@ -23,182 +24,96 @@ export default function Navbar() {
         setMobileOpen(false);
       }
     }
-
-    if (mobileOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (mobileOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [mobileOpen]);
+
+  // Handle mobile menu on public/auth pages
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
   return (
     <nav
       ref={navRef}
-      className="sticky top-0 z-50"
-      style={{
-        background: 'rgba(6, 14, 32, 0.75)',
-        backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(186, 158, 255, 0.1)',
-      }}
+      className={`md:hidden sticky top-0 z-[60] w-full px-4 py-3 bg-black/40 backdrop-blur-xl border-b border-white/5`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 no-underline">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-glow"
-              style={{ background: 'var(--gradient-primary)' }}
-            >
-              🏦
-            </div>
-            <span
-              className="text-lg font-bold display-font"
-              style={{
-                background: 'var(--gradient-primary)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              InsightBank
-            </span>
-          </Link>
-
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1">
-            {isAuthenticated && NAV_LINKS.map((link) => {
-              const isActive =
-                location.pathname === link.to ||
-                (link.to !== '/' && location.pathname.startsWith(link.to));
-              return (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className="px-4 py-2 rounded-lg text-sm font-medium no-underline transition-all duration-300 flex items-center gap-2 hover:bg-white/5"
-                  style={{
-                    color: isActive ? 'var(--color-primary)' : 'var(--text-secondary)',
-                    background: isActive ? 'rgba(186, 158, 255, 0.1)' : 'transparent',
-                    border: isActive ? '1px solid rgba(186, 158, 255, 0.2)' : '1px solid transparent',
-                  }}
-                >
-                  <span>{link.icon}</span>
-                  {link.label}
-                </Link>
-              );
-            })}
-
-            {isAuthenticated ? (
-              <div className="ml-4 flex items-center gap-4 pl-4 border-l border-white/10">
-                <span className="text-xs font-medium text-text-muted hidden lg:block">
-                  {user?.email}
-                </span>
-                <button
-                  onClick={logout}
-                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-red-500/10 hover:text-red-400"
-                  style={{
-                    color: 'var(--text-secondary)',
-                    border: '1px solid transparent',
-                  }}
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/login"
-                  className="px-4 py-2 rounded-lg text-sm font-medium no-underline"
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="premium-button py-2 text-sm"
-                >
-                  Register
-                </Link>
-              </div>
-            )}
+      <div className="flex items-center justify-between">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2 no-underline">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+            <Wallet className="w-5 h-5 text-white" />
           </div>
+          <span className="text-lg font-bold text-white display-font tracking-tight">
+            InsightBank
+          </span>
+        </Link>
 
-          {/* Mobile Hamburger */}
-          <button
-            className="md:hidden p-2 rounded-lg"
-            style={{
-              color: 'var(--text-secondary)',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '20px',
-            }}
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
-            {mobileOpen ? '✕' : '☰'}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileOpen && (
-          <div
-            className="md:hidden pb-4 animate-fade-in"
-            style={{ borderTop: '1px solid var(--border-color)' }}
-          >
-            {isAuthenticated ? (
-              <>
-                <div className="px-4 py-3 border-b border-white/5 mb-2">
-                  <p className="text-xs text-text-muted">Signed in as</p>
-                  <p className="text-sm font-medium overflow-hidden text-ellipsis">{user?.email}</p>
-                </div>
-                {NAV_LINKS.map((link) => {
-                  const isActive = location.pathname === link.to;
-                  return (
-                    <Link
-                      key={link.to}
-                      to={link.to}
-                      onClick={() => setMobileOpen(false)}
-                      className="block px-4 py-3 rounded-lg text-sm font-medium no-underline mt-1"
-                      style={{
-                        color: isActive ? '#e0e7ff' : 'var(--text-secondary)',
-                        background: isActive ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                      }}
-                    >
-                      <span className="mr-2">{link.icon}</span>
-                      {link.label}
-                    </Link>
-                  );
-                })}
-                <button
-                  onClick={logout}
-                  className="w-full text-left px-4 py-3 rounded-lg text-sm font-medium mt-1 text-red-400"
-                >
-                  <span className="mr-2">🚪</span>
-                  Logout
-                </button>
-              </>
-            ) : (
-              <div className="p-4 space-y-2">
-                 <Link
-                  to="/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="block w-full text-center px-4 py-3 rounded-lg text-sm font-medium no-underline"
-                  style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  onClick={() => setMobileOpen(false)}
-                  className="block w-full text-center premium-button py-3 text-sm"
-                >
-                  Register
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Hamburger */}
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="p-2 text-slate-400 hover:text-white transition-colors"
+        >
+          {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
       </div>
+
+      {/* Mobile Menu Overlay */}
+      {mobileOpen && (
+        <div className="absolute top-full left-0 w-full bg-black/90 backdrop-blur-2xl border-b border-white/5 py-6 px-4 space-y-2 animate-in fade-in slide-in-from-top-4 duration-300">
+          {isAuthenticated ? (
+            <>
+              <div className="px-4 py-3 bg-white/5 rounded-xl mb-4">
+                <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Signed in as</p>
+                <p className="text-sm font-medium text-slate-200 truncate">{user?.email}</p>
+              </div>
+              
+              {NAV_LINKS.map((link) => {
+                const isActive = location.pathname === link.to;
+                return (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                      isActive ? 'bg-violet-500/10 text-violet-400' : 'text-slate-400'
+                    }`}
+                  >
+                    <link.icon className="w-5 h-5" />
+                    <span className="font-medium">{link.label}</span>
+                  </Link>
+                );
+              })}
+
+              <button
+                onClick={() => {
+                  logout();
+                  setMobileOpen(false);
+                }}
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-rose-400 hover:bg-rose-400/5 transition-all mt-4"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Logout</span>
+              </button>
+            </>
+          ) : (
+            <div className="space-y-3 pt-2">
+              <Link
+                to="/login"
+                onClick={() => setMobileOpen(false)}
+                className="block w-full text-center px-4 py-3 rounded-xl text-slate-300 bg-white/5 border border-white/10 font-medium"
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                onClick={() => setMobileOpen(false)}
+                className="block w-full text-center px-4 py-3 rounded-xl bg-violet-600 text-white font-medium shadow-lg shadow-violet-600/20"
+              >
+                Register
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   );
 }

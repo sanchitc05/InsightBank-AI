@@ -1,26 +1,27 @@
 import { useEffect, useState } from 'react';
+import { ShieldAlert, AlertTriangle, Lightbulb, Info, Calendar } from 'lucide-react';
 
-const SEVERITY_STYLES = {
+const SEVERITY_CONFIG = {
   alert: { 
-    border: '#ef4444', 
-    bg: 'rgba(239,68,68,0.05)',
-    icon: '⚠️', 
-    titleColor: '#ef4444',
-    badgeBg: 'rgba(239,68,68,0.15)'
+    icon: ShieldAlert, 
+    colorClass: 'text-rose-400',
+    bgClass: 'bg-rose-500/10',
+    borderClass: 'border-rose-500/20',
+    badgeClass: 'bg-rose-500/20 text-rose-400'
   },
   warn:  { 
-    border: '#f59e0b', 
-    bg: 'rgba(245,158,11,0.05)',
-    icon: '💡', 
-    titleColor: '#f59e0b',
-    badgeBg: 'rgba(245,158,11,0.15)'
+    icon: AlertTriangle, 
+    colorClass: 'text-amber-400',
+    bgClass: 'bg-amber-500/10',
+    borderClass: 'border-amber-500/20',
+    badgeClass: 'bg-amber-500/20 text-amber-400'
   },
   info:  { 
-    border: '#3b82f6', 
-    bg: 'rgba(59,130,246,0.05)',
-    icon: 'ℹ️', 
-    titleColor: '#3b82f6',
-    badgeBg: 'rgba(59,130,246,0.15)'
+    icon: Info, 
+    colorClass: 'text-indigo-400',
+    bgClass: 'bg-indigo-500/10',
+    borderClass: 'border-indigo-500/20',
+    badgeClass: 'bg-indigo-500/20 text-indigo-400'
   },
 };
 
@@ -28,25 +29,25 @@ const TYPE_LABELS = { anomaly: 'Anomaly', pattern: 'Pattern', tip: 'Tip' };
 
 export default function InsightCard({ type, title, body, severity, created_at, index = 0 }) {
   const [isVisible, setIsVisible] = useState(false);
-  const style = SEVERITY_STYLES[severity] || SEVERITY_STYLES.info;
+  const config = SEVERITY_CONFIG[severity] || SEVERITY_CONFIG.info;
+  const Icon = config.icon;
 
   useEffect(() => {
-    // Trigger animation on mount
     const timer = setTimeout(() => setIsVisible(true), index * 60);
     return () => clearTimeout(timer);
   }, [index]);
 
-  // Format timestamp as "DD MMM YYYY, HH:MM"
   const formatTimestamp = (dateStr) => {
     if (!dateStr) return '';
     try {
       const date = new Date(dateStr);
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = date.toLocaleString('en-US', { month: 'short' });
-      const year = date.getFullYear();
-      const hours = String(date.getHours()).padStart(2, '0');
-      const mins = String(date.getMinutes()).padStart(2, '0');
-      return `${day} ${month} ${year}, ${hours}:${mins}`;
+      return date.toLocaleString('en-IN', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     } catch {
       return '';
     }
@@ -54,52 +55,34 @@ export default function InsightCard({ type, title, body, severity, created_at, i
 
   return (
     <div
-      className="rounded-lg p-5 border-l-4 transition-all duration-300"
+      className={`glass-card p-6 border-l-4 transition-all duration-500 ease-out ${config.borderClass} ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
       style={{
-        borderColor: style.border,
-        backgroundColor: style.bg,
-        opacity: isVisible ? 1 : 0,
-        transform: isVisible ? 'translateY(0)' : 'translateY(12px)',
+        borderLeftColor: 'currentColor',
+        color: config.colorClass.split('-')[1] === 'rose' ? '#fb7185' : config.colorClass.split('-')[1] === 'amber' ? '#fbbf24' : '#818cf8'
       }}
     >
-      {/* Top row: icon + type badge */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xl">{style.icon}</span>
-        <span
-          className="px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider"
-          style={{
-            backgroundColor: style.badgeBg,
-            color: style.border,
-          }}
-        >
+      <div className="flex items-start justify-between mb-4">
+        <div className={`p-2.5 rounded-xl ${config.bgClass} ${config.colorClass}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${config.badgeClass}`}>
           {TYPE_LABELS[type] || type}
         </span>
       </div>
 
-      {/* Title */}
-      <h3
-        className="font-bold text-sm mb-2"
-        style={{ color: style.titleColor }}
-      >
+      <h3 className={`font-bold text-lg mb-2 text-slate-100`}>
         {title}
       </h3>
 
-      {/* Body */}
-      <p
-        className="text-sm leading-relaxed mb-3"
-        style={{ color: '#94a3b8' }}
-      >
+      <p className="text-sm leading-relaxed mb-6 text-slate-400 font-medium">
         {body}
       </p>
 
-      {/* Timestamp */}
       {created_at && (
-        <p
-          className="text-xs"
-          style={{ color: '#94a3b8' }}
-        >
+        <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+          <Calendar className="w-3 h-3" />
           {formatTimestamp(created_at)}
-        </p>
+        </div>
       )}
     </div>
   );

@@ -2,8 +2,22 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from '../App'
+import { useAuth } from '../context/AuthContext'
 
-function renderApp() {
+// Mock useAuth
+vi.mock('../context/AuthContext', () => ({
+  useAuth: vi.fn(),
+  AuthProvider: ({ children }) => <div>{children}</div>
+}))
+
+function renderApp(isAuthenticated = true) {
+  useAuth.mockReturnValue({
+    isAuthenticated,
+    user: isAuthenticated ? { email: 'test@example.com' } : null,
+    loading: false,
+    logout: vi.fn()
+  })
+  
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })

@@ -37,7 +37,7 @@ class UserResponse(BaseModel):
 # ── Statement Schemas ──────────────────────────────────────
 
 class StatementBase(BaseModel):
-    bank_name: str
+    bank_name: Optional[str] = None
     account_number: Optional[str] = None
     month: int
     year: int
@@ -49,6 +49,8 @@ class StatementResponse(StatementBase):
     id: int
     file_name: str
     uploaded_at: Optional[datetime] = None
+    status: str = "SUCCESS"
+    error_log: Optional[str] = None
 
     @field_validator("account_number")
     @classmethod
@@ -65,12 +67,13 @@ class StatementResponse(StatementBase):
 
 class StatementUploadResponse(BaseModel):
     statement_id: int
-    bank_name: str
-    month: int
-    year: int
-    total_transactions: int
+    bank_name: Optional[str] = "GENERIC"
+    month: Optional[int] = None
+    year: Optional[int] = None
+    total_transactions: int = 0
     total_credit: float = Field(default=0.0, ge=0)
     total_debit: float = Field(default=0.0, ge=0)
+    status: str = "PENDING"
 
 
 # ── Transaction Schemas ────────────────────────────────────

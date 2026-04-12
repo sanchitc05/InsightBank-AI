@@ -1,4 +1,5 @@
 import re
+import pandas as pd
 from typing import List
 
 from app.parsers.base_parser import BaseParser
@@ -29,12 +30,14 @@ LINE_PATTERN = re.compile(
 
 
 class SBIParser(BaseParser):
-    """Parser for State Bank of India (SBI) bank statements.
+    """Parser for State Bank of India (SBI) bank statements."""
 
-    Supports two layouts:
-      Layout A — pdfplumber extracts structured tables
-      Layout B — text-only; parsed line-by-line with regex
-    """
+    def parse(self, file_path: str, **kwargs) -> pd.DataFrame:
+        """SBI Implementation: PDF extraction + base cleanup."""
+        ocr_text = kwargs.get("ocr_text")
+        all_rows = self._parse_pdf_structured(file_path, ocr_text=ocr_text)
+        df = pd.DataFrame(all_rows)
+        return self._cleanup_df(df)
 
     # ── Layout A: table-based ──────────────────────────────
     def parse_table(self, table: list) -> List[dict]:

@@ -1,4 +1,5 @@
 import re
+import pandas as pd
 from typing import List
 
 from app.parsers.base_parser import BaseParser
@@ -6,6 +7,13 @@ from app.parsers.base_parser import BaseParser
 
 class ICICIParser(BaseParser):
     """Parser for ICICI Bank statements."""
+
+    def parse(self, file_path: str, **kwargs) -> pd.DataFrame:
+        """ICICI Implementation: PDF extraction + base cleanup."""
+        ocr_text = kwargs.get("ocr_text")
+        all_rows = self._parse_pdf_structured(file_path, ocr_text=ocr_text)
+        df = pd.DataFrame(all_rows)
+        return self._cleanup_df(df)
 
     def parse_table(self, table: list) -> List[dict]:
         """

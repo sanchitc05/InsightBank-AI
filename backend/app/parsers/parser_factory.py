@@ -37,56 +37,64 @@ PARSER_MAP = {
 }
 
 
-async def detect_bank(file_path: str) -> str:
-    """Detect the bank from the file content (PDF or CSV) - Async version."""
+def detect_bank(file_path: str) -> str:
+    """Detect the bank from the file content (PDF or CSV) - Synchronous version."""
     # Check for CSV first by extension
     if file_path.lower().endswith('.csv'):
         logger.debug("detect_bank: CSV file detected by extension")
         return "CSV"
 
     try:
-        # First try cheap text extraction from the first few pages
+        # 1. Quick PDF Text Extraction
         try:
             import pdfplumber
-        except Exception:
+        except ImportError:
+            logger.warning("pdfplumber not found, skipping quick extraction")
             pdfplumber = None
 
         total_text = ""
         if pdfplumber:
-            with pdfplumber.open(file_path) as pdf:
-                for page in pdf.pages[:3]:
-                    total_text += (page.extract_text() or "")
+            try:
+                with pdfplumber.open(file_path) as pdf:
+                    for page in pdf.pages[:3]:
+                        total_text += (page.extract_text() or "")
+            except Exception as e:
+                logger.warning(f"pdfplumber failed to read {file_path}: {e}")
 
-            if total_text and len(total_text.strip()) >= 100:
-                text_upper = total_text.upper()
-                for keyword, bank_code in BANK_KEYWORDS.items():
-                    if keyword in text_upper:
-                        logger.debug(f"detect_bank: matched {bank_code} via quick pdf text")
-                        return bank_code
-
-        # If not enough extractable text, attempt OCR only when an engine is likely available
-        logger.debug("detect_bank: insufficient quick text; attempting OCR if available")
-        tesseract_path = OCRExtractor.find_tesseract()
-        ocr = None
-        if os.name == 'nt' or tesseract_path:
-            ocr = OCRExtractor(tesseract_path=tesseract_path)
-
-        if ocr:
-            text = await ocr.extract_from_pdf(file_path)
-            text_upper = (text or "").upper()
+        if total_text and len(total_text.strip()) >= 50:
+            text_upper = total_text.upper()
             for keyword, bank_code in BANK_KEYWORDS.items():
                 if keyword in text_upper:
-                    logger.debug(f"detect_bank: matched {bank_code} via OCR text")
+                    logger.debug(f"detect_bank: matched {bank_code} via quick pdf text")
                     return bank_code
 
+        # 2. OCR Fallback if quick text failed or not enough text
+        logger.debug("detect_bank: insufficient text; attempting OCR")
+        tesseract_path = OCRExtractor.find_tesseract()
+        
+        # On Windows or if tesseract found, try OCR
+        if os.name == 'nt' or tesseract_path:
+            try:
+                ocr = OCRExtractor(tesseract_path=tesseract_path)
+                ocr_text = ocr.extract_from_pdf(file_path)
+                if ocr_text:
+                    text_upper = ocr_text.upper()
+                    for keyword, bank_code in BANK_KEYWORDS.items():
+                        if keyword in text_upper:
+                            logger.debug(f"detect_bank: matched {bank_code} via OCR text")
+                            return bank_code
+            except Exception as e:
+                logger.warning(f"OCR detection failed: {e}")
+
     except Exception as e:
-        logger.error(f"Error during bank detection: {str(e)}", exc_info=True)
-        raise ParserError(f"Bank detection failed: {str(e)}")
+        logger.error(f"Critical error during bank detection: {str(e)}", exc_info=True)
+        # We don't want to crash the whole upload process if detection fails
+        return "GENERIC"
 
     return "GENERIC"
 
 
-async def get_parser(bank: str):
-    """Return the appropriate parser instance (async ready)."""
+def get_parser(bank: str):
+    """Return the appropriate parser instance (synchronous)."""
     parser_class = PARSER_MAP.get(bank, HDFCParser)
     return parser_class()

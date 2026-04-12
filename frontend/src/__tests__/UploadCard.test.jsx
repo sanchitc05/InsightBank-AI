@@ -26,7 +26,7 @@ describe('UploadCard', () => {
         render(<UploadCard />)
         
         // Simulating dropzone is tricky, but we can check if it renders the placeholder first
-        expect(screen.getByText('Select a PDF statement')).toBeInTheDocument()
+        expect(screen.getByText('Select a PDF/CSV statement')).toBeInTheDocument()
     })
 
     it('shows the analyze button only when a file is selected', () => {

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
 import ScrollProgress from './components/ScrollProgress';
@@ -7,6 +7,9 @@ import ToastProvider from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ToastContainer from './components/Toast';
+import Sidebar from './components/Sidebar';
+import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const UploadPage = lazy(() => import('./pages/UploadPage'));
@@ -21,19 +24,15 @@ const SuspenseFallback = () => (
   <div className="flex items-center justify-center h-64">
     <div
       className="animate-spin rounded-full h-8 w-8 border-t-2"
-      style={{ borderColor: 'var(--accent-primary)' }}
+      style={{ borderColor: 'var(--color-primary)' }}
     />
   </div>
 );
-
-import { useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 
 function QueryClientBridge({ children }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Set default options for all queries
     queryClient.setDefaultOptions({
       queries: {
         retry: 1,
@@ -53,13 +52,10 @@ export default function App() {
           <QueryClientBridge>
             <BrowserRouter>
               <ScrollProgress />
-              <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full" />
-              </div>
+              <Sidebar />
               <Navbar />
               <ToastContainer />
-              <main className="flex-1 flex flex-col">
+              <main className="flex-1 flex flex-col md:pl-64 min-h-screen">
                 <Suspense fallback={<SuspenseFallback />}>
                   <Routes>
                     {/* Public Routes */}

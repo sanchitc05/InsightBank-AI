@@ -90,9 +90,9 @@ class OCRExtractor:
         
         return None
 
-    async def extract_from_pdf(self, pdf_path: str) -> str:
+    def extract_from_pdf(self, pdf_path: str) -> str:
         """
-        Convert each page of a PDF to an image and perform OCR.
+        Convert each page of a PDF to an image and perform OCR synchronously.
         :param pdf_path: Path to the scanned PDF file.
         :return: Consolidated text from all pages.
         """
@@ -106,8 +106,8 @@ class OCRExtractor:
                 bitmap = page.render(scale=4)  # 288 DPI approx
                 pil_image = bitmap.to_pil()
                 
-                # Perform OCR with WinOCR priority, fallback to Tesseract
-                text = await self._ocr_dispatch(pil_image)
+                # Perform OCR with Tesseract
+                text = self._ocr_dispatch(pil_image)
                 full_text.append(text)
                 
             pdf.close()
@@ -123,25 +123,24 @@ class OCRExtractor:
             logger.error(f"Error during PDF OCR extraction: {str(e)}")
             return ""
 
-    async def extract_from_image(self, image_path: str) -> str:
+    def extract_from_image(self, image_path: str) -> str:
         """
-        Perform OCR on a single image file.
+        Perform OCR on a single image file synchronously.
         :param image_path: Path to the image file.
         :return: Extracted text.
         """
         try:
             pil_image = Image.open(image_path)
-            return await self._ocr_dispatch(pil_image)
+            return self._ocr_dispatch(pil_image)
         except Exception as e:
             logger.error(f"Error during image OCR extraction: {str(e)}")
             return ""
 
-    async def _ocr_dispatch(self, pil_image: Image.Image) -> str:
+    def _ocr_dispatch(self, pil_image: Image.Image) -> str:
         """Internal dispatcher that uses Tesseract for OCR extraction."""
         if self.tesseract_available:
             logger.debug("Using Tesseract OCR (pytesseract)")
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, lambda: pytesseract.image_to_string(pil_image))
+            return pytesseract.image_to_string(pil_image)
 
         logger.warning("No OCR engine available (Tesseract not found). Returning empty string.")
         return ""

@@ -1,84 +1,70 @@
 import { useState, useEffect } from 'react';
+import { Sparkles, BrainCircuit, ShieldAlert, AlertTriangle, Lightbulb, ChevronDown, Wand2, Loader2 } from 'lucide-react';
 import { useStatements } from '../hooks/useStatements';
 import { useInsights, useGenerateInsights } from '../hooks/useInsights';
 import { SkeletonCard } from '../components/Skeleton';
 import PageWrapper from '../components/PageWrapper';
 import InsightCard from '../components/InsightCard';
+import ScrollReveal from '../components/ScrollReveal';
 
 // ── Empty State Component ──────────────────────
 function EmptyState({ onGenerateClick }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 glass-card border-dashed border-white/10 animate-fade-in">
-      <div className="w-24 h-24 rounded-3xl bg-slate-900/50 flex items-center justify-center text-5xl mb-8 shadow-2xl border border-white/5 ring-1 ring-white/10">
-        🔍
+    <div className="flex flex-col items-center justify-center py-24 glass-card border-dashed border-white/10 text-center px-4">
+      <div className="relative mb-8">
+        <div className="absolute inset-0 bg-violet-500/20 blur-3xl rounded-full" />
+        <div className="relative w-24 h-24 rounded-3xl bg-slate-900 border border-white/10 flex items-center justify-center text-5xl shadow-2xl">
+          🧠
+        </div>
       </div>
-      <h3 className="text-3xl font-black mb-4 text-white tracking-tight">
-        No insights yet
+      <h3 className="text-3xl font-bold mb-4 text-white tracking-tight display-font">
+        No Insights Yet
       </h3>
-      <p className="text-slate-400 mb-12 max-w-sm text-center leading-relaxed text-lg">
-        Select a statement and click <span className="text-indigo-400 font-bold">Generate Insights</span> to analyze your spending with our AI engine.
+      <p className="text-slate-400 mb-12 max-w-sm leading-relaxed text-lg font-medium">
+        Select a statement and let our AI engine analyze your spending patterns.
       </p>
       <button
         onClick={onGenerateClick}
         className="premium-button px-10 py-4 flex items-center gap-3 group text-lg"
       >
-        <span className="group-hover:rotate-12 transition-transform duration-300">⚡</span>
-        Generate Insights
+        <Wand2 className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+        Generate Analysis
       </button>
     </div>
   );
 }
 
 // ── Insights Section Component ─────────────────
-function InsightsSection({ title, emoji, count, insights, severityLevel }) {
+function InsightsSection({ title, icon: Icon, count, insights, severityLevel }) {
   if (insights.length === 0) return null;
 
+  const colorConfig = {
+    alert: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+    warn: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+    info: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20'
+  };
+
   return (
-    <div className="mb-16 animate-fade-in">
-      {/* Section header */}
+    <div className="mb-16">
       <div className="flex items-center gap-4 mb-8">
-        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl border shadow-lg ${
-          severityLevel === 'alert' 
-            ? 'bg-rose-500/10 border-rose-500/20 shadow-rose-500/5' 
-            : severityLevel === 'warn'
-            ? 'bg-amber-500/10 border-amber-500/20 shadow-amber-500/5'
-            : 'bg-indigo-500/10 border-indigo-500/20 shadow-indigo-500/5'
-        }`}>
-          {emoji}
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-lg ${colorConfig[severityLevel]}`}>
+          <Icon className="w-6 h-6" />
         </div>
         <div className="flex flex-col">
-          <h2 className="text-2xl font-black text-white tracking-tight">
+          <h2 className="text-2xl font-bold text-white tracking-tight display-font">
             {title}
           </h2>
-          <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
-            {count} {count === 1 ? 'Significant Entry' : 'Pattern Matches'}
-          </span>
-        </div>
-        <div className="ml-auto">
-          <span
-            className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter ring-1 ring-inset ${
-              severityLevel === 'alert'
-                ? 'bg-rose-500/20 text-rose-400 ring-rose-500/30'
-                : severityLevel === 'warn'
-                ? 'bg-amber-500/20 text-amber-400 ring-amber-500/30'
-                : 'bg-emerald-500/20 text-emerald-400 ring-emerald-500/30'
-            }`}
-          >
-            {severityLevel === 'alert' ? 'Priority' : severityLevel === 'warn' ? 'Careful' : 'Optimal'}
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+            {count} {count === 1 ? 'Insight Found' : 'Patterns Detected'}
           </span>
         </div>
       </div>
 
-      {/* Grid of insight cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {insights.map((insight, idx) => (
           <InsightCard
             key={insight.id}
-            type={insight.type}
-            title={insight.title}
-            body={insight.body}
-            severity={insight.severity}
-            created_at={insight.created_at}
+            {...insight}
             index={idx}
           />
         ))}
@@ -87,34 +73,9 @@ function InsightsSection({ title, emoji, count, insights, severityLevel }) {
   );
 }
 
-// ── Error Banner Component ─────────────────────
-function ErrorBanner({ message, onRetry }) {
-  return (
-    <div className="glass-card p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 border-rose-500/20 bg-rose-500/5">
-      <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-500">
-          ⚠️
-        </div>
-        <div>
-          <h4 className="font-bold text-white">Analysis Failed</h4>
-          <p className="text-sm text-slate-400">{message}</p>
-        </div>
-      </div>
-      <button
-        onClick={onRetry}
-        className="px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-rose-500/20"
-      >
-        Retry Analysis
-      </button>
-    </div>
-  );
-}
-
 // ── Main Insights Page ─────────────────────────
 export default function Insights() {
   const [selectedId, setSelectedId] = useState(null);
-
-  // Fetch statements
   const statementsQuery = useStatements();
   const statements = statementsQuery.data || [];
 
@@ -124,21 +85,10 @@ export default function Insights() {
     }
   }, [statements, selectedId]);
 
-  // Fetch insights
   const insightsQuery = useInsights(selectedId);
-  const insightsData = insightsQuery.data;
-  const insightsList = insightsData?.insights || [];
-
-  // Mutations
+  const insightsList = insightsQuery.data?.insights || [];
   const generateMutation = useGenerateInsights();
 
-  // Format month
-  const formatMonth = (stmt) => {
-    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${stmt.bank_name} · ${months[stmt.month]} ${stmt.year}`;
-  };
-
-  // Handle generate click
   const handleGenerate = () => {
     if (!selectedId) return;
     generateMutation.mutate(selectedId);
@@ -146,144 +96,115 @@ export default function Insights() {
 
   const isGenerating = generateMutation.isPending;
 
-  // Group insights by severity
   const groupedInsights = {
-    alert: insightsList.filter((i) => i.severity === 'alert') || [],
-    warn: insightsList.filter((i) => i.severity === 'warn') || [],
-    info: insightsList.filter((i) => i.severity === 'info') || [],
+    alert: insightsList.filter((i) => i.severity === 'alert'),
+    warn: insightsList.filter((i) => i.severity === 'warn'),
+    info: insightsList.filter((i) => i.severity === 'info'),
   };
 
-  const hasAnyInsights =
-    groupedInsights.alert.length > 0 ||
-    groupedInsights.warn.length > 0 ||
-    groupedInsights.info.length > 0;
+  const hasAnyInsights = insightsList.length > 0;
 
   return (
     <PageWrapper>
-      <div className="min-h-screen">
-        <div className="max-w-6xl mx-auto px-4 py-12">
-          {/* Header Section */}
-          <div className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
-            <div className="animate-slide-up">
-              <h1 className="text-5xl font-black mb-4 tracking-tight">
-                <span className="text-gradient">Financial AI</span>
-              </h1>
-              <p className="text-slate-400 text-xl max-w-xl leading-relaxed">
-                Deep analysis of your spending habits, recurring patterns, and anomaly detection.
-              </p>
+      <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-12">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[10px] font-black uppercase tracking-widest">
+              <Sparkles className="w-3 h-3" />
+              AI-Powered Forensics
             </div>
-
-            {/* Statement Selector with fixed width and better styling */}
-            <div className="relative group animate-slide-up" style={{ animationDelay: '100ms' }}>
-              <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
-              <div className="relative">
-                <select
-                  value={selectedId || ''}
-                  onChange={(e) => setSelectedId(parseInt(e.target.value))}
-                  className="appearance-none bg-slate-900 text-white pl-6 pr-14 py-4 rounded-2xl border border-white/10 hover:border-white/20 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 min-w-[280px] text-base font-bold shadow-2xl"
-                >
-                  {statements.map((stmt) => (
-                    <option key={stmt.id} value={stmt.id} className="bg-slate-900 text-white">
-                      {formatMonth(stmt)}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-400 text-xl">
-                  ⌄
-                </div>
-              </div>
-            </div>
+            <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight display-font leading-tight">
+              Intelligent <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-500">Financial Insights</span>
+            </h1>
+            <p className="text-slate-400 text-lg max-w-xl font-medium leading-relaxed">
+              Our neural engine analyzes every transaction to detect anomalies, recurring patterns, and optimization opportunities.
+            </p>
           </div>
 
-          <div className="mb-16 flex flex-wrap items-center gap-6 animate-slide-up" style={{ animationDelay: '200ms' }}>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="relative w-full sm:w-auto min-w-[240px]">
+              <select
+                value={selectedId || ''}
+                onChange={(e) => setSelectedId(parseInt(e.target.value))}
+                className="w-full appearance-none bg-white/5 text-white pl-5 pr-12 py-4 rounded-2xl border border-white/10 hover:border-white/20 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-sm font-bold shadow-xl"
+              >
+                {statements.map((stmt) => (
+                  <option key={stmt.id} value={stmt.id} className="bg-slate-900 border-none">
+                    {stmt.bank_name} · {new Date(stmt.year, stmt.month - 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+            </div>
+
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !selectedId}
-              className={`premium-button px-10 py-5 flex items-center gap-4 text-lg font-black shadow-2xl shadow-indigo-500/20 ${isGenerating ? 'opacity-70 scale-95 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+              className={`premium-button w-full sm:w-auto px-8 py-4 flex items-center justify-center gap-3 text-sm font-black shadow-2xl transition-all ${isGenerating ? 'opacity-70 scale-95 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
             >
               {isGenerating ? (
                 <>
-                  <div className="w-6 h-6 border-3 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>Analyzing Data...</span>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Processing...</span>
                 </>
               ) : (
                 <>
-                  <span className="text-2xl">⚡</span>
-                  <span>Analyze Statement</span>
+                  <BrainCircuit className="w-5 h-5" />
+                  <span>Execute Analysis</span>
                 </>
               )}
             </button>
-            
-            {isGenerating && (
-              <div className="flex items-center gap-3">
-                <div className="flex gap-1">
-                  <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce"></div>
-                </div>
-                <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-                  Brewing insights
-                </span>
-              </div>
-            )}
           </div>
-
-          {/* ── Insights Display ────────────────── */}
-
-          {/* Loading state */}
-          {insightsQuery.isLoading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          )}
-
-          {/* Error state */}
-          {insightsQuery.isError && !insightsQuery.isLoading && (
-            <ErrorBanner
-              message={
-                insightsQuery.error.response?.data?.detail ||
-                'Our AI engine encountered an issue while processing your request.'
-              }
-              onRetry={() => insightsQuery.refetch()}
-            />
-          )}
-
-          {/* Empty state */}
-          {!insightsQuery.isLoading &&
-            !insightsQuery.isError &&
-            !hasAnyInsights && (
-              <EmptyState onGenerateClick={handleGenerate} />
-            )}
-
-          {/* Insights grouped by severity */}
-          {!insightsQuery.isLoading && !insightsQuery.isError && hasAnyInsights && (
-            <div className="space-y-4">
-              <InsightsSection
-                title="Critical Alerts"
-                emoji="🚨"
-                count={groupedInsights.alert.length}
-                insights={groupedInsights.alert}
-                severityLevel="alert"
-              />
-              <InsightsSection
-                title="Behavioral Warnings"
-                emoji="⚠️"
-                count={groupedInsights.warn.length}
-                insights={groupedInsights.warn}
-                severityLevel="warn"
-              />
-              <InsightsSection
-                title="Pattern Analysis"
-                emoji="📈"
-                count={groupedInsights.info.length}
-                insights={groupedInsights.info}
-                severityLevel="info"
-              />
-            </div>
-          )}
         </div>
+
+        {/* ── Content ────────────────── */}
+
+        {insightsQuery.isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="glass-card p-6 h-60 animate-pulse bg-white/5" />
+            ))}
+          </div>
+        ) : !hasAnyInsights && !isGenerating ? (
+          <ScrollReveal>
+            <EmptyState onGenerateClick={handleGenerate} />
+          </ScrollReveal>
+        ) : (
+          <div className="space-y-4">
+            <InsightsSection
+              title="Priority Alerts"
+              icon={ShieldAlert}
+              count={groupedInsights.alert.length}
+              insights={groupedInsights.alert}
+              severityLevel="alert"
+            />
+            <InsightsSection
+              title="Activity Patterns"
+              icon={AlertTriangle}
+              count={groupedInsights.warn.length}
+              insights={groupedInsights.warn}
+              severityLevel="warn"
+            />
+            <InsightsSection
+              title="Economic Intelligence"
+              icon={Lightbulb}
+              count={groupedInsights.info.length}
+              insights={groupedInsights.info}
+              severityLevel="info"
+            />
+          </div>
+        )}
+
+        {isGenerating && (
+          <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+             <div className="w-16 h-16 relative mb-6">
+                <div className="absolute inset-0 border-4 border-violet-500/20 rounded-full" />
+                <div className="absolute inset-0 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
+             </div>
+             <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Generating Forensic Report...</p>
+          </div>
+        )}
       </div>
     </PageWrapper>
   );

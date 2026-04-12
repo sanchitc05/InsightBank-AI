@@ -26,93 +26,111 @@ class ParserError(Exception):
 
 
 class BaseParser(ABC):
-    """Abstract base class for bank statement PDF parsers."""
+    """Abstract base class for all bank statement parsers (PDF and CSV)."""
 
-    async def parse(self, pdf_path: str, ocr_text: Optional[str] = None) -> pd.DataFrame:
-        """Open PDF and extract transactions from all pages (Async)."""
-        import asyncio
-        loop = asyncio.get_event_loop()
-        
-        def _sync_parse():
-            all_rows = []
-            try:
-                import pdfplumber
-            except ImportError as e:
-                logger.error(f"pdfplumber is not installed: {str(e)}")
-                raise ParserError(f"pdfplumber is not installed: {str(e)}")
+    @abstractmethod
+    def parse(self, file_path: str, **kwargs) -> pd.DataFrame:
+        """
+        Parse the statement file and return a structured DataFrame.
+        This method is synchronous and CPU-bound. Offload to thread-pools in async contexts.
+        """
+        pass
 
-            try:
-                with pdfplumber.open(pdf_path) as pdf:
-                    logger.debug(f"Opening PDF {pdf_path}. Total pages: {len(pdf.pages)}")
-                    for i, page in enumerate(pdf.pages):
-                        rows_before = len(all_rows)
-
-                        # ── Layout A: try structured tables first ──
-                        tables = page.extract_tables()
-                        if tables:
-                            logger.debug(f"Page {i+1}: Found {len(tables)} table(s)")
-                            for table in tables:
-                                rows = self.parse_table(table)
-                                all_rows.extend(rows)
-
-                        rows_from_tables = len(all_rows) - rows_before
-
-                        # ── Layout B: text fallback when tables yield nothing ──
-                        if rows_from_tables == 0:
-                            logger.debug(f"Page {i+1}: No rows from tables, falling back to text extraction")
-                            text = page.extract_text()
-                            if text:
-                                rows = self.parse_text(text)
-                                all_rows.extend(rows)
-                                if rows:
-                                    logger.debug(f"Page {i+1}: Extracted {len(rows)} row(s) from text")
-                
-                # Use OCR fallback if fewer than a threshold of rows were found
-                if len(all_rows) < 5:
-                    logger.debug(f"Only {len(all_rows)} rows extracted from PDF, checking for OCR text fallback")
-                    if ocr_text and ocr_text.strip():
-                        rows = self.parse_text(ocr_text)
-                        if rows:
-                            # Replace garbage rows with OCR result
-                            all_rows = rows
-                            logger.info(f"[OCR FALLBACK] Extracted {len(rows)} row(s) from OCR text")
-                                
-                logger.debug(f"Total rows extracted: {len(all_rows)}")
-            except Exception as e:
-                logger.error(f"Error during PDF parsing: {str(e)}", exc_info=True)
-                raise ParserError(f"Error during PDF parsing: {str(e)}")
-            
-            return all_rows
-
-        # Run the heavy parsing in a thread
+    def extract_account_number(self, file_path: str, ocr_text: Optional[str] = None) -> Optional[str]:
+        """
+        Generic regex-based account number extraction from file.
+        """
+        text = ""
         try:
-            all_rows = await loop.run_in_executor(None, _sync_parse)
-        except Exception as e:
-            # Re-raise as a ParserError the router can catch
-            raise ParserError(f"PDF parsing failed: {str(e)}")
+            import pdfplumber
+            with pdfplumber.open(file_path) as pdf:
+                # Only check first two pages for account info
+                for page in pdf.pages[:2]:
+                    text += (page.extract_text() or "") + "\n"
+        except Exception:
+            pass
+        
+        if ocr_text:
+            text += ocr_text[:2000]
+            
+        return self.extract_account_number_from_text(text)
 
-        if not all_rows:
-            logger.warning(f"No rows extracted from {pdf_path}")
-            return pd.DataFrame()
+    @staticmethod
+    def extract_account_number_from_text(text: str) -> Optional[str]:
+        """Extract account number from raw text using regex."""
+        # Common patterns for Indian banks
+        patterns = [
+            r"Account\s*No\.?\s*:\s*(\d{8,16})",
+            r"Account\s*Number\s*:\s*(\d{8,16})",
+            r"A/c\s*No\.?\s*:\s*(\d{8,16})",
+            r"Cust\s*ID/Acc\s*No\s*:\s*(\d{8,16})",
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        return None
 
-        df = pd.DataFrame(all_rows)
-        # Clean up the dataframe
+    def _cleanup_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Standard polish for extracted transaction dataframes."""
+        if df.empty:
+            return df
+            
+        # Clean up columns if they exist
         if "date" in df.columns:
             df["date"] = df["date"].apply(self._safe_parse_date)
             df = df.dropna(subset=["date"])
-        if "debit" in df.columns:
-            df["debit"] = df["debit"].apply(self.clean_amount)
-        if "credit" in df.columns:
-            df["credit"] = df["credit"].apply(self.clean_amount)
-        if "balance" in df.columns:
-            df["balance"] = df["balance"].apply(self.clean_amount)
-
-        # Defense-in-depth: ensure no NaN survives in numeric columns
+            
         for col in ["debit", "credit", "balance"]:
             if col in df.columns:
+                df[col] = df[col].apply(self.clean_amount)
                 df[col] = df[col].fillna(0.0)
 
         return df
+
+    def _parse_pdf_structured(self, pdf_path: str, ocr_text: Optional[str] = None) -> List[dict]:
+        """ Helper for PDF subclasses: Standard page extraction loop. """
+        all_rows = []
+        self.metadata = {"account_number": None, "period": None}
+        full_text = ""
+        
+        try:
+            import pdfplumber
+            with pdfplumber.open(pdf_path) as pdf:
+                for i, page in enumerate(pdf.pages):
+                    page_text = page.extract_text() or ""
+                    full_text += page_text + "\n"
+                    
+                    # Try tables
+                    tables = page.extract_tables()
+                    rows_before = len(all_rows)
+                    if tables:
+                        for table in tables:
+                            all_rows.extend(self.parse_table(table))
+                    
+                    # Fallback to text if tables found nothing
+                    if len(all_rows) == rows_before:
+                        if page_text:
+                            all_rows.extend(self.parse_text(page_text))
+            
+            # OCR Fallback
+            if len(all_rows) < 5 and ocr_text and ocr_text.strip():
+                full_text += ocr_text
+                rows = self.parse_text(ocr_text)
+                if rows:
+                    all_rows = rows
+                    logger.info(f"[OCR FALLBACK] Extracted {len(rows)} row(s) from OCR text")
+            
+            # Extract metadata from accumulated text
+            self.metadata["account_number"] = self.extract_account_number_from_text(full_text)
+            self.metadata["period"] = self.extract_period(full_text)
+                    
+        except Exception as e:
+            logger.error(f"Error during PDF extraction: {str(e)}", exc_info=True)
+            raise ParserError(f"PDF extraction failed: {str(e)}")
+            
+        return all_rows
 
     @abstractmethod
     def parse_table(self, table: list) -> List[dict]:
@@ -141,6 +159,34 @@ class BaseParser(ABC):
             return abs(float(val))
         except (ValueError, TypeError):
             return 0.0
+
+    @staticmethod
+    def extract_period(text: str) -> Optional[dict]:
+        """
+        Attempts to extract statement period (month/year) from text.
+        Returns {'month': int, 'year': int} or None.
+        """
+        # Look for "Period: 01-Jan-2026 to 31-Jan-2026" or similar
+        # Or "Statement for: January 2026"
+        month_names = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+        months_full = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+        
+        # Pattern 1: Month Name Year (e.g. January 2026)
+        for i, m in enumerate(months_full):
+            pattern = re.compile(rf"{m}\s*,?\s*(20\d{{2}})", re.IGNORECASE)
+            match = pattern.search(text)
+            if match:
+                return {"month": i + 1, "year": int(match.group(1))}
+        
+        # Pattern 2: DD-MMM-YYYY (e.g. 01-Jan-2026)
+        pattern = re.compile(r"(\d{2})[-/]([a-zA-Z]{3})[-/](20\d{2})")
+        match = pattern.search(text)
+        if match:
+            mon_str = match.group(2).lower()
+            if mon_str in month_names:
+                return {"month": month_names.index(mon_str) + 1, "year": int(match.group(3))}
+                
+        return None
 
     @staticmethod
     def parse_date_static(val) -> Optional[date]:

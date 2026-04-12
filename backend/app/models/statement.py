@@ -9,7 +9,7 @@ class Statement(Base):
     __tablename__ = "statements"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    bank_name = Column(String(50), nullable=False)
+    bank_name = Column(String(50), nullable=True)
     account_number = Column(String(30), nullable=True)
     month = Column(Integer, nullable=False)
     year = Column(Integer, nullable=False)
@@ -18,13 +18,17 @@ class Statement(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     total_credit = Column(Numeric(precision=12, scale=2), default=0.00)
     total_debit = Column(Numeric(precision=12, scale=2), default=0.00)
+    
+    # Ingestion status tracking
+    status = Column(String(20), default="PENDING", nullable=False) # PENDING, PROCESSING, SUCCESS, FAILED
+    error_log = Column(String(1024), nullable=True)
 
     # Relationships
     transactions = relationship("Transaction", back_populates="statement", cascade="all, delete-orphan")
     insights = relationship("Insight", back_populates="statement", cascade="all, delete-orphan")
 
     __table_args__ = (
-        UniqueConstraint("bank_name", "account_number", "month", "year", "user_id", name="uq_statement_period"),
+        UniqueConstraint("account_number", "month", "year", "user_id", name="uq_statement_period"),
     )
 
     def __repr__(self):

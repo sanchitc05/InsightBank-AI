@@ -3,6 +3,7 @@ import { useStatements } from '../hooks/useStatements';
 import PageWrapper from '../components/PageWrapper';
 import UploadCard from '../components/UploadCard';
 import StatementList from '../components/StatementList';
+import ScrollReveal from '../components/ScrollReveal';
 
 export default function UploadPage() {
   const { data: statements = [], isLoading: loading } = useStatements();
@@ -17,18 +18,27 @@ export default function UploadPage() {
   return (
     <PageWrapper>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-extrabold mb-8 tracking-tight">
-          <span className="text-gradient">Upload Statement</span>
-        </h1>
+        <ScrollReveal>
+          <h1 className="text-4xl font-black mb-8">
+            <span className="text-gradient">Upload Statement</span>
+          </h1>
+        </ScrollReveal>
 
-        <UploadCard onUploadSuccess={handleUploadSuccess} />
+        <ScrollReveal delay={100}>
+          <UploadCard onUploadSuccess={handleUploadSuccess} />
+        </ScrollReveal>
 
-        <div className="mt-10">
-          <h2 className="text-base font-bold mb-4 uppercase tracking-[0.2em] text-slate-500">
-            Uploaded Statements
-          </h2>
-          <StatementList statements={statements} loading={loading} />
+        <div className="mt-16">
+          <ScrollReveal delay={200}>
+            <h2 className="text-sm font-bold mb-6 uppercase tracking-[0.3em] text-slate-500">
+              Processing History
+            </h2>
+          </ScrollReveal>
+          <ScrollReveal delay={300}>
+            <StatementList statements={statements} loading={loading} />
+          </ScrollReveal>
         </div>
+
       </div>
     </PageWrapper>
   );
