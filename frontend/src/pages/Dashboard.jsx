@@ -113,7 +113,7 @@ export default function Dashboard() {
   const categoriesQuery = useCategoryBreakdown(selectedId);
   const trendQuery = useMonthlyTrends();
   const transactionsQuery = useTransactions(
-    selectedId ? { statement_id: selectedId, page_size: 500 } : null
+    selectedId ? { statement_id: selectedId, page_size: 200 } : null
   );
 
   const summary = summaryQuery.data || {};
