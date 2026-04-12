@@ -29,7 +29,20 @@ export default function Register() {
       showToast('Account created successfully', 'success');
       navigate('/');
     } catch (error) {
-      const message = error.response?.data?.detail || 'Registration failed. Try a different email.';
+      let message = 'Registration failed. Please try again.';
+      
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (Array.isArray(detail)) {
+          // Flatten Pydantic validation errors
+          message = detail.map(err => err.msg).join('. ');
+        } else {
+          message = detail;
+        }
+      } else if (error.message) {
+        message = error.message;
+      }
+      
       showToast(message, 'error');
     } finally {
       setLoading(false);
@@ -73,6 +86,9 @@ export default function Register() {
               className="premium-input w-full"
               placeholder="Min. 12 characters"
             />
+            <p className="text-[10px] text-text-muted mt-1 px-1">
+              Must be 12+ chars with at least one digit and one special character.
+            </p>
           </div>
 
           <div className="space-y-2">

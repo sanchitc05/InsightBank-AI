@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
+from datetime import datetime, timezone, timedelta
+from sqlalchemy import text
 import jwt
+import os
 
 from app.database import get_db
 from app.models.user import User
@@ -46,14 +49,16 @@ def login(request: Request, response: Response, user_in: UserLogin, db: Session 
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token, jti = create_refresh_token(data={"sub": str(user.id)})
     
-    from app.core.rate_limit import is_testing
+    # Determine if we should use secure cookies
+    # Local dev on http://localhost doesn't support Secure cookies
+    is_prod = os.getenv("ENV", "development").lower() == "production"
     
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=not is_testing,
-        samesite="strict",
+        secure=is_prod,
+        samesite="lax", # More permissive for cross-port local dev
         path="/",
     )
     
@@ -61,8 +66,8 @@ def login(request: Request, response: Response, user_in: UserLogin, db: Session 
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=not is_testing,
-        samesite="strict",
+        secure=is_prod,
+        samesite="lax", # More permissive for cross-port local dev
         path="/api/v1/auth/refresh",
     )
     return {"message": "Login successful"}
@@ -103,7 +108,8 @@ def refresh(request: Request, response: Response, db: Session = Depends(get_db))
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
         
-    from app.core.rate_limit import is_testing
+    # Determine if we should use secure cookies
+    is_prod = os.getenv("ENV", "development").lower() == "production"
 
     new_access_token = create_access_token(data={"sub": str(user.id)})
     new_refresh_token, new_jti = create_refresh_token(data={"sub": str(user.id)})
@@ -112,8 +118,8 @@ def refresh(request: Request, response: Response, db: Session = Depends(get_db))
         key="access_token",
         value=new_access_token,
         httponly=True,
-        secure=not is_testing,
-        samesite="strict",
+        secure=is_prod,
+        samesite="lax",
         path="/",
     )
     
@@ -121,8 +127,8 @@ def refresh(request: Request, response: Response, db: Session = Depends(get_db))
         key="refresh_token",
         value=new_refresh_token,
         httponly=True,
-        secure=not is_testing,
-        samesite="strict",
+        secure=is_prod,
+        samesite="lax",
         path="/api/v1/auth/refresh",
     )
     

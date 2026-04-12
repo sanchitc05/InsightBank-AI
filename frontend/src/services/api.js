@@ -6,6 +6,14 @@ const api = axios.create({
   withCredentials: true, // Required for httpOnly cookies
 });
 
+let isRefreshing = false;
+let refreshPromise = null;
+let logoutHandler = null;
+
+export const setLogoutHandler = (handler) => {
+  logoutHandler = handler;
+};
+
 // Response interceptor for automated data unwrapping and 401 handling
 api.interceptors.response.use(
   (response) => response.data,
@@ -20,25 +28,42 @@ api.interceptors.response.use(
       !originalRequest.url.includes('/auth/refresh')
     ) {
       originalRequest._retry = true;
-      try {
-        // Attempt to refresh the session
-        await axios.post(
+
+      if (!isRefreshing) {
+        isRefreshing = true;
+        // Attempt to refresh the session using a fresh axios instance to avoid interceptors
+        refreshPromise = axios.post(
           `${api.defaults.baseURL}/auth/refresh`, 
           {}, 
           { withCredentials: true }
-        );
+        ).then(res => {
+          isRefreshing = false;
+          refreshPromise = null;
+          return res;
+        }).catch(err => {
+          isRefreshing = false;
+          refreshPromise = null;
+          if (logoutHandler) logoutHandler();
+          throw err;
+        });
+      }
+
+      try {
+        await refreshPromise;
         // If success, retry original request
         return api(originalRequest);
       } catch (refreshError) {
-        // If refresh fails, we must clear auth state (handled by AuthContext)
+        // If refresh fails, we must clear auth state
         console.error('Session expired, redirecting to login');
-        // We can't easily redirect here without window.location or event bus
-        // Better: trigger a rejection that the caller/context can handle
         return Promise.reject(refreshError);
       }
     }
 
-    console.error('API Error:', error.response?.data || error.message);
+    // Don't log expected 401s from the app initialization
+    if (error.response?.status !== 401 || originalRequest.url.includes('/auth/refresh')) {
+      console.error('API Error:', error.response?.data || error.message);
+    }
+    
     return Promise.reject(error);
   }
 );

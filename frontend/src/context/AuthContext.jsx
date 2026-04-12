@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { loginUser, registerUser, logoutUser, refreshSession } from '../services/api';
+import { loginUser, registerUser, logoutUser, refreshSession, setLogoutHandler } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -8,15 +8,24 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  const logout = useCallback(async () => {
+    try {
+      await logoutUser();
+    } finally {
+      setIsAuthenticated(false);
+      setUser(null);
+    }
+  }, []);
+
   // Initialize session from cookie on mount
   useEffect(() => {
+    // Register logout handler with API service
+    setLogoutHandler(logout);
+
     const initAuth = async () => {
       try {
-        // Since we use httpOnly cookies, we just try to refresh
-        // If it returns 200, we're logged in
         await refreshSession();
         setIsAuthenticated(true);
-        // We could fetch user profile here if we had a /me endpoint
       } catch (err) {
         setIsAuthenticated(false);
         setUser(null);
@@ -25,7 +34,7 @@ export const AuthProvider = ({ children }) => {
       }
     };
     initAuth();
-  }, []);
+  }, [logout]);
 
   const login = useCallback(async (credentials) => {
     try {
@@ -49,16 +58,6 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       setIsAuthenticated(false);
       throw error;
-    }
-  }, []);
-
-  const logout = useCallback(async () => {
-    try {
-      await logoutUser();
-    } finally {
-      setIsAuthenticated(false);
-      setUser(null);
-      // Redirect to login handled by App.jsx or Nav
     }
   }, []);
 
