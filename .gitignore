@@ -8,6 +8,12 @@ build/
 .venv/
 venv/
 .pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+pip-log.txt
 
 # ── Node ────────────────────────────────────────────────────
 node_modules/
@@ -16,7 +22,18 @@ dist-ssr/
 
 # ── Environment & Secrets ──────────────────────────────────
 .env
+.env.*
+!.env.example
 *.local
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+secrets.*
+credentials.json
+client_secret.json
+auth.json
 
 # ── IDE / Editor ────────────────────────────────────────────
 .vscode/
@@ -42,6 +59,7 @@ Desktop.ini
 tmp/
 uploads/
 *.db
+*.sqlite
 *.sqlite3
 _tmp_ocr_pages/
 backend/_tmp_ocr_pages/
@@ -50,6 +68,9 @@ test_output.txt
 tmp_winocr.ps1
 build_output.txt
 dev_log.txt
+# Prevent accidental upload of bank statements or data exports
+*.pdf
+*.csv
 
 # ── GSD / Agent artifacts (keep out of public repo) ────────
 .agent/
