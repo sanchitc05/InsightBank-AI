@@ -3,16 +3,52 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1',
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // Required for httpOnly cookies
 });
 
-// Response interceptor to unwrap data
+// Response interceptor for automated data unwrapping and 401 handling
 api.interceptors.response.use(
   (response) => response.data,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If we get a 401 and it's not from a login or refresh attempt itself
+    if (
+      error.response?.status === 401 && 
+      !originalRequest._retry && 
+      !originalRequest.url.includes('/auth/login') &&
+      !originalRequest.url.includes('/auth/refresh')
+    ) {
+      originalRequest._retry = true;
+      try {
+        // Attempt to refresh the session
+        await axios.post(
+          `${api.defaults.baseURL}/auth/refresh`, 
+          {}, 
+          { withCredentials: true }
+        );
+        // If success, retry original request
+        return api(originalRequest);
+      } catch (refreshError) {
+        // If refresh fails, we must clear auth state (handled by AuthContext)
+        console.error('Session expired, redirecting to login');
+        // We can't easily redirect here without window.location or event bus
+        // Better: trigger a rejection that the caller/context can handle
+        return Promise.reject(refreshError);
+      }
+    }
+
     console.error('API Error:', error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
+
+// ── Authentication ────────────────────────────
+export const loginUser = (credentials) => api.post('/auth/login', credentials);
+export const registerUser = (userData) => api.post('/auth/register', userData);
+export const logoutUser = () => api.post('/auth/logout');
+export const refreshSession = () => api.post('/auth/refresh');
+export const getMe = () => api.get('/auth/me'); // Optional health check / profile query
 
 // ── Statements ────────────────────────────────
 export const uploadStatement = (file, onProgress) => {

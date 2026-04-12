@@ -7,6 +7,8 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.core.dependencies import get_current_user
+from app.models.user import User
 from app.models.statement import Statement
 from app.models.transaction import Transaction
 from app.schemas.schemas import (
@@ -52,7 +54,7 @@ UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
         400: {"model": ErrorResponse, "description": "Invalid file type or request parameter"}
     }
 )
-async def upload_statement(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_statement(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Upload a bank statement PDF, parse it, and store transactions."""
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
@@ -169,6 +171,7 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
             Statement.account_number == account_number,
             Statement.month == month,
             Statement.year == year,
+            Statement.user_id == current_user.id,
         ).first()
 
         if existing:
@@ -185,6 +188,7 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
                 account_number=account_number,
                 month=month,
                 year=year,
+                user_id=current_user.id,
                 file_name=saved_name,
                 total_credit=total_credit,
                 total_debit=total_debit,
@@ -271,10 +275,11 @@ async def upload_statement(file: UploadFile = File(...), db: Session = Depends(g
 
 
 @router.get("/statements", response_model=list[StatementResponse])
-def list_statements(db: Session = Depends(get_db)):
+def list_statements(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """List all uploaded statements ordered by year desc, month desc."""
     statements = (
         db.query(Statement)
+        .filter(Statement.user_id == current_user.id)
         .order_by(Statement.year.desc(), Statement.month.desc())
         .all()
     )
@@ -282,18 +287,18 @@ def list_statements(db: Session = Depends(get_db)):
 
 
 @router.get("/statements/{stmt_id}", response_model=StatementResponse)
-def get_statement(stmt_id: int, db: Session = Depends(get_db)):
+def get_statement(stmt_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get a single statement by ID."""
-    stmt = db.query(Statement).filter(Statement.id == stmt_id).first()
+    stmt = db.query(Statement).filter(Statement.id == stmt_id, Statement.user_id == current_user.id).first()
     if not stmt:
         raise HTTPException(status_code=404, detail="Statement not found")
     return stmt
 
 
 @router.delete("/statements/{stmt_id}")
-def delete_statement(stmt_id: int, db: Session = Depends(get_db)):
+def delete_statement(stmt_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Delete a statement and all its transactions (cascade)."""
-    stmt = db.query(Statement).filter(Statement.id == stmt_id).first()
+    stmt = db.query(Statement).filter(Statement.id == stmt_id, Statement.user_id == current_user.id).first()
     if not stmt:
         raise HTTPException(status_code=404, detail="Statement not found")
 

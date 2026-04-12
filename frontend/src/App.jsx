@@ -1,9 +1,11 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
 import ScrollProgress from './components/ScrollProgress';
 import ToastProvider from './context/ToastContext';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import ToastContainer from './components/Toast';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -11,6 +13,8 @@ const UploadPage = lazy(() => import('./pages/UploadPage'));
 const TransactionsPage = lazy(() => import('./pages/TransactionsPage'));
 const Insights = lazy(() => import('./pages/Insights'));
 const Compare = lazy(() => import('./pages/Compare'));
+const Login = lazy(() => import('./pages/auth/Login'));
+const Register = lazy(() => import('./pages/auth/Register'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 const SuspenseFallback = () => (
@@ -44,31 +48,40 @@ function QueryClientBridge({ children }) {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ToastProvider>
-        <QueryClientBridge>
-          <BrowserRouter>
-            <ScrollProgress />
-            <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
-              <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full" />
-              <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full" />
-            </div>
-            <Navbar />
-            <ToastContainer />
-            <main className="flex-1">
-              <Suspense fallback={<SuspenseFallback />}>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/upload" element={<UploadPage />} />
-                  <Route path="/transactions" element={<TransactionsPage />} />
-                  <Route path="/insights" element={<Insights />} />
-                  <Route path="/compare" element={<Compare />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-            </main>
-          </BrowserRouter>
-        </QueryClientBridge>
-      </ToastProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <QueryClientBridge>
+            <BrowserRouter>
+              <ScrollProgress />
+              <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full" />
+              </div>
+              <Navbar />
+              <ToastContainer />
+              <main className="flex-1 flex flex-col">
+                <Suspense fallback={<SuspenseFallback />}>
+                  <Routes>
+                    {/* Public Routes */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+
+                    {/* Protected Routes */}
+                    <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    <Route path="/upload" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
+                    <Route path="/transactions" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />
+                    <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
+                    <Route path="/compare" element={<ProtectedRoute><Compare /></ProtectedRoute>} />
+                    
+                    {/* Catch All */}
+                    <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
+                  </Routes>
+                </Suspense>
+              </main>
+            </BrowserRouter>
+          </QueryClientBridge>
+        </ToastProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

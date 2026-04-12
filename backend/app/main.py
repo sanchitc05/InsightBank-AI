@@ -5,10 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
-from app.routers import statements, transactions, insights
+from app.routers import statements, transactions, insights, auth
 from app.database import engine, Base, SessionLocal, seed_categories
 from app.api_version import API_V1_PREFIX
 from app.exceptions import StatementParsingException
+
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.core.rate_limit import limiter
 
 load_dotenv()
 
@@ -35,6 +39,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 @app.exception_handler(StatementParsingException)
 async def statement_parsing_exception_handler(request, exc: StatementParsingException):
@@ -49,19 +56,17 @@ async def statement_parsing_exception_handler(request, exc: StatementParsingExce
     )
 
 # CORS configuration
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-    ],
+    allow_origins=[FRONTEND_ORIGIN],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept"],
 )
 
 # Include routers — single versioned prefix from api_version.py
+app.include_router(auth.router, prefix=API_V1_PREFIX + "/auth", tags=["Auth"])
 app.include_router(statements.router, prefix=API_V1_PREFIX, tags=["Statements"])
 app.include_router(transactions.router, prefix=API_V1_PREFIX, tags=["Transactions"])
 app.include_router(insights.router, prefix=API_V1_PREFIX, tags=["Analytics & Insights"])

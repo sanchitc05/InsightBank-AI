@@ -7,6 +7,10 @@ from app.database import get_db
 from app.models.transaction import Transaction
 from app.schemas.schemas import TransactionListResponse, TransactionResponse
 
+from app.models.statement import Statement
+from app.core.dependencies import get_current_user
+from app.models.user import User
+
 router = APIRouter()
 
 
@@ -23,9 +27,10 @@ def list_transactions(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """List transactions with filtering, search, and pagination."""
-    query = db.query(Transaction)
+    query = db.query(Transaction).join(Statement).filter(Statement.user_id == current_user.id)
 
     # Apply filters
     if statement_id:

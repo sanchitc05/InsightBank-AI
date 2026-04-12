@@ -1,7 +1,37 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, EmailStr, field_validator
 from typing import Optional, List
 from datetime import datetime, date
 from decimal import Decimal
+import re
+
+
+# ── Auth Schemas ──────────────────────────────────────────
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v):
+        if len(v) < 12:
+            raise ValueError("Password must be at least 12 characters long")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain at least one digit")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            raise ValueError("Password must contain at least one special character")
+        return v
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Statement Schemas ──────────────────────────────────────
@@ -11,14 +41,24 @@ class StatementBase(BaseModel):
     account_number: Optional[str] = None
     month: int
     year: int
-    total_credit: float = 0.0
-    total_debit: float = 0.0
+    total_credit: float = Field(0.0, ge=0)
+    total_debit: float = Field(0.0, ge=0)
 
 
 class StatementResponse(StatementBase):
     id: int
     file_name: str
     uploaded_at: Optional[datetime] = None
+
+    @field_validator("account_number")
+    @classmethod
+    def mask_account_number(cls, v):
+        if not v:
+            return v
+        # Ensure it's masked to XXXX1234
+        if len(v) > 4:
+            return "X" * (len(v) - 4) + v[-4:]
+        return "XXXX" + v
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -29,8 +69,8 @@ class StatementUploadResponse(BaseModel):
     month: int
     year: int
     total_transactions: int
-    total_credit: float
-    total_debit: float
+    total_credit: float = Field(default=0.0, ge=0)
+    total_debit: float = Field(default=0.0, ge=0)
 
 
 # ── Transaction Schemas ────────────────────────────────────
@@ -38,8 +78,8 @@ class StatementUploadResponse(BaseModel):
 class TransactionBase(BaseModel):
     txn_date: Optional[date] = None
     description: Optional[str] = None
-    debit: float = 0.0
-    credit: float = 0.0
+    debit: float = Field(0.0, ge=0)
+    credit: float = Field(0.0, ge=0)
     balance: float = 0.0
     category: str = "Uncategorized"
     merchant: Optional[str] = None

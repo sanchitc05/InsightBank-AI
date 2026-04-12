@@ -1,10 +1,13 @@
 import calendar
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.database import get_db
+from app.core.dependencies import get_current_user
+from app.core.rate_limit import limiter
+from app.models.user import User
 from app.models.statement import Statement
 from app.models.transaction import Transaction
 from app.models.category import Category
@@ -27,21 +30,27 @@ router = APIRouter()
 # ── Analytics Endpoints ────────────────────────────────────
 
 @router.get("/analytics/summary/{stmt_id}", response_model=AnalyticsSummary)
-def get_analytics_summary(stmt_id: int, db: Session = Depends(get_db)):
+def get_analytics_summary(stmt_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get analytics summary for a statement."""
+    stmt = db.query(Statement).filter(Statement.id == stmt_id, Statement.user_id == current_user.id).first()
+    if not stmt:
+        raise HTTPException(status_code=404, detail="Statement not found")
     return compute_summary(db, stmt_id)
 
 
 @router.get("/analytics/categories/{stmt_id}", response_model=list[CategoryBreakdown])
-def get_analytics_categories(stmt_id: int, db: Session = Depends(get_db)):
+def get_analytics_categories(stmt_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get category breakdown for a statement."""
+    stmt = db.query(Statement).filter(Statement.id == stmt_id, Statement.user_id == current_user.id).first()
+    if not stmt:
+        raise HTTPException(status_code=404, detail="Statement not found")
     return compute_categories(db, stmt_id)
 
 
 @router.get("/analytics/trend", response_model=list[TrendPoint])
-def get_analytics_trend(bank_name: Optional[str] = None, db: Session = Depends(get_db)):
+def get_analytics_trend(bank_name: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get income/expense trend across all statements."""
-    query = db.query(Statement)
+    query = db.query(Statement).filter(Statement.user_id == current_user.id)
     if bank_name:
         query = query.filter(Statement.bank_name == bank_name)
     statements = query.order_by(Statement.year.asc(), Statement.month.asc()).all()
@@ -66,7 +75,7 @@ def get_analytics_trend(bank_name: Optional[str] = None, db: Session = Depends(g
 
 
 @router.get("/analytics/compare", response_model=CompareResponse)
-def get_analytics_compare(ids: str = Query(...), db: Session = Depends(get_db)):
+def get_analytics_compare(ids: str = Query(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Compare two or more statements side by side."""
     id_list = [int(x.strip()) for x in ids.split(",") if x.strip()]
     if len(id_list) < 2:
@@ -77,7 +86,7 @@ def get_analytics_compare(ids: str = Query(...), db: Session = Depends(get_db)):
     all_categories = []
 
     for stmt_id in id_list:
-        stmt = db.query(Statement).filter(Statement.id == stmt_id).first()
+        stmt = db.query(Statement).filter(Statement.id == stmt_id, Statement.user_id == current_user.id).first()
         if not stmt:
             raise HTTPException(status_code=404, detail=f"Statement {stmt_id} not found")
         statements.append(StatementResponse.model_validate(stmt))
@@ -94,10 +103,10 @@ def get_analytics_compare(ids: str = Query(...), db: Session = Depends(get_db)):
 # ── Insight Endpoints ─────────────────────────────────────
 
 @router.get("/insights/{stmt_id}", response_model=list[InsightResponse])
-def get_insights(stmt_id: int, db: Session = Depends(get_db)):
+def get_insights(stmt_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get all insights for a statement, ordered by severity priority."""
     # Check if statement exists
-    stmt = db.query(Statement).filter(Statement.id == stmt_id).first()
+    stmt = db.query(Statement).filter(Statement.id == stmt_id, Statement.user_id == current_user.id).first()
     if not stmt:
         raise HTTPException(status_code=404, detail="Statement not found")
 
@@ -121,10 +130,11 @@ def get_insights(stmt_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/insights/generate/{stmt_id}", response_model=InsightGenerateResponse)
-def generate_insights(stmt_id: int, db: Session = Depends(get_db)):
+@limiter.limit("1/minute")
+def generate_insights(request: Request, stmt_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Generate AI insights for a statement."""
-    # Check if statement exists
-    stmt = db.query(Statement).filter(Statement.id == stmt_id).first()
+    # Check if statement exists and is owned by current user
+    stmt = db.query(Statement).filter(Statement.id == stmt_id, Statement.user_id == current_user.id).first()
     if not stmt:
         raise HTTPException(status_code=404, detail="Statement not found")
 
