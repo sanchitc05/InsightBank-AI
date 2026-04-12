@@ -9,6 +9,13 @@ export const useStatements = () => {
   return useQuery({
     queryKey: ['statements'],
     queryFn: ({ signal }) => api.fetchStatements(signal),
+    refetchInterval: (data) => {
+      if (!Array.isArray(data)) return false;
+      const hasPending = data.some(
+        (stmt) => stmt.status === 'PENDING' || stmt.status === 'PROCESSING'
+      );
+      return hasPending ? 2000 : false;
+    },
   });
 };
 

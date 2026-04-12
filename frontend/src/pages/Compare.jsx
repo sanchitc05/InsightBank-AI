@@ -189,6 +189,45 @@ function CategoryChart({ categoryComparison, statements, chartData: preComputedC
     change_pct: cat.change_pct,
   }));
 
+  const CategoryTooltip = ({ active, payload }) => {
+    if (!active || !payload || payload.length === 0) return null;
+    const data = payload[0].payload;
+    const changeValue = data.change_pct;
+    const changeText = changeValue === null
+      ? '—'
+      : `${changeValue > 0 ? '+' : ''}${changeValue.toFixed(1)}%`;
+    const changeColor = changeValue === null
+      ? '#94a3b8'
+      : changeValue > 0
+        ? '#10b981'
+        : '#f43f5e';
+
+    return (
+      <div
+        style={{
+          background: 'rgba(15, 23, 42, 0.9)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '16px',
+          padding: '12px 16px',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
+        }}
+      >
+        <p style={{ color: '#fff', marginBottom: '8px', fontSize: '13px', fontWeight: 700 }}>
+          {data.fullName || data.name}
+        </p>
+        {payload.map((item) => (
+          <p key={item.dataKey} style={{ fontSize: '12px', fontWeight: 700, color: item.color, marginBottom: '4px' }}>
+            {item.dataKey}: {formatINR(item.value)}
+          </p>
+        ))}
+        <p style={{ fontSize: '12px', fontWeight: 700, color: changeColor }}>
+          Change: {changeText}
+        </p>
+      </div>
+    );
+  };
+
   return (
     <div className="h-[400px] w-full mt-4">
       <ResponsiveContainer width="100%" height="100%">
@@ -222,20 +261,7 @@ function CategoryChart({ categoryComparison, statements, chartData: preComputedC
             axisLine={false}
             tickFormatter={(value) => `₹${value >= 1000 ? (value/1000).toFixed(0) + 'k' : value}`}
           />
-          <Tooltip
-            cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-            contentStyle={{
-              background: 'rgba(15, 23, 42, 0.9)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '16px',
-              padding: '12px 16px',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
-            }}
-            itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
-            labelStyle={{ color: '#fff', marginBottom: '8px', fontSize: '13px' }}
-            formatter={(value) => [formatINR(value), '']}
-          />
+          <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} content={<CategoryTooltip />} />
           <Legend
             verticalAlign="top"
             align="right"
@@ -406,15 +432,48 @@ export default function Compare() {
     refetch: refetchCompare
   } = useCategoryComparison(statementAId, statementBId);
 
+  const categoryComparison = useMemo(() => {
+    if (!compareData?.categories || compareData.categories.length < 2) return [];
+    const [categoriesA = [], categoriesB = []] = compareData.categories;
+    const byCategory = new Map();
+
+    categoriesA.forEach((cat) => {
+      const key = cat.category || 'Uncategorized';
+      const entry = byCategory.get(key) || { category: key, amount_a: 0, amount_b: 0 };
+      entry.amount_a = Number(cat.total) || 0;
+      byCategory.set(key, entry);
+    });
+
+    categoriesB.forEach((cat) => {
+      const key = cat.category || 'Uncategorized';
+      const entry = byCategory.get(key) || { category: key, amount_a: 0, amount_b: 0 };
+      entry.amount_b = Number(cat.total) || 0;
+      byCategory.set(key, entry);
+    });
+
+    return Array.from(byCategory.values())
+      .map((entry) => {
+        const changePct = entry.amount_a === 0
+          ? null
+          : ((entry.amount_b - entry.amount_a) / entry.amount_a) * 100;
+        return {
+          ...entry,
+          change_pct: changePct,
+        };
+      })
+      .sort((a, b) => (b.amount_a + b.amount_b) - (a.amount_a + a.amount_b));
+  }, [compareData?.categories]);
+
   const chartData = useMemo(() => {
-    if (!compareData?.category_comparison) return [];
-    return compareData.category_comparison.map((cat) => ({
+    if (!categoryComparison.length) return [];
+    return categoryComparison.map((cat) => ({
       name: cat.category.length > 20 ? cat.category.substring(0, 20) + '...' : cat.category,
+      fullName: cat.category,
       'Statement A': cat.amount_a,
       'Statement B': cat.amount_b,
       change_pct: cat.change_pct,
     }));
-  }, [compareData?.category_comparison]);
+  }, [categoryComparison]);
 
   const formatStmtLabel = (stmt) => `${stmt.bank_name} · ${MONTH_NAMES[stmt.month]} ${stmt.year}`;
 
@@ -554,7 +613,7 @@ export default function Compare() {
               <div className="glass-card p-10 border border-white/5 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[100px] -mr-32 -mt-32"></div>
                 <CategoryChart
-                  categoryComparison={compareData.category_comparison}
+                  categoryComparison={categoryComparison}
                   statements={compareData.statements}
                   chartData={chartData}
                 />

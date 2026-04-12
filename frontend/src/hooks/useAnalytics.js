@@ -34,12 +34,12 @@ export const useMonthlyTrends = () => {
 };
 
 /**
- * Hook for category comparison (Current vs Average)
+ * Hook for comparing two statements
  */
-export const useCategoryComparison = (category) => {
+export const useCategoryComparison = (statementIdA, statementIdB) => {
   return useQuery({
-    queryKey: ['category-comparison', category],
-    queryFn: ({ signal }) => api.fetchCategoryComparison(category, null, signal),
-    enabled: !!category,
+    queryKey: ['category-comparison', statementIdA, statementIdB],
+    queryFn: ({ signal }) => api.fetchCategoryComparison(statementIdA, statementIdB, signal),
+    enabled: !!statementIdA && !!statementIdB,
   });
 };

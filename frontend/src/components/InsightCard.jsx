@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ShieldAlert, AlertTriangle, Lightbulb, Info, Calendar } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 
 const SEVERITY_CONFIG = {
   alert: { 
@@ -26,6 +29,72 @@ const SEVERITY_CONFIG = {
 };
 
 const TYPE_LABELS = { anomaly: 'Anomaly', pattern: 'Pattern', tip: 'Tip' };
+
+const markdownSchema = {
+  ...defaultSchema,
+  tagNames: Array.from(new Set([
+    ...(defaultSchema.tagNames || []),
+    'table',
+    'thead',
+    'tbody',
+    'tr',
+    'th',
+    'td',
+  ])),
+  attributes: {
+    ...defaultSchema.attributes,
+    table: ['className'],
+    th: ['align'],
+    td: ['align'],
+    code: ['className'],
+  },
+};
+
+const markdownComponents = {
+  p: ({ ...props }) => (
+    <p className="text-sm leading-relaxed text-slate-400 font-medium mb-3" {...props} />
+  ),
+  ul: ({ ...props }) => (
+    <ul className="list-disc ml-5 space-y-1 text-sm text-slate-400 font-medium mb-3" {...props} />
+  ),
+  ol: ({ ...props }) => (
+    <ol className="list-decimal ml-5 space-y-1 text-sm text-slate-400 font-medium mb-3" {...props} />
+  ),
+  li: ({ ...props }) => (
+    <li className="leading-relaxed" {...props} />
+  ),
+  strong: ({ ...props }) => (
+    <strong className="text-slate-100 font-semibold" {...props} />
+  ),
+  em: ({ ...props }) => (
+    <em className="text-slate-200" {...props} />
+  ),
+  a: ({ ...props }) => (
+    <a className="text-indigo-300 underline underline-offset-2" rel="noreferrer" target="_blank" {...props} />
+  ),
+  code: ({ inline, ...props }) => (
+    inline ? (
+      <code className="px-1 py-0.5 rounded bg-slate-900/70 text-slate-200 text-xs font-mono" {...props} />
+    ) : (
+      <code className="text-slate-200 text-xs font-mono" {...props} />
+    )
+  ),
+  pre: ({ ...props }) => (
+    <pre className="bg-slate-900/70 border border-white/5 rounded-xl p-4 overflow-x-auto text-xs text-slate-200 mb-3" {...props} />
+  ),
+  table: ({ ...props }) => (
+    <table className="w-full text-sm text-slate-300 border border-white/10 mb-3" {...props} />
+  ),
+  thead: ({ ...props }) => (
+    <thead className="bg-slate-900/60" {...props} />
+  ),
+  th: ({ ...props }) => (
+    <th className="px-3 py-2 text-left text-[11px] uppercase tracking-widest text-slate-400 border-b border-white/10" {...props} />
+  ),
+  td: ({ ...props }) => (
+    <td className="px-3 py-2 border-b border-white/5" {...props} />
+  ),
+};
 
 export default function InsightCard({ type, title, body, severity, created_at, index = 0 }) {
   const [isVisible, setIsVisible] = useState(false);
@@ -74,9 +143,17 @@ export default function InsightCard({ type, title, body, severity, created_at, i
         {title}
       </h3>
 
-      <p className="text-sm leading-relaxed mb-6 text-slate-400 font-medium">
-        {body}
-      </p>
+      {body && (
+        <div className="mb-6">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[[rehypeSanitize, markdownSchema]]}
+            components={markdownComponents}
+          >
+            {body}
+          </ReactMarkdown>
+        </div>
+      )}
 
       {created_at && (
         <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">

@@ -1,9 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useUploadStatement } from '../hooks/useStatements';
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+import { getStatement } from '../services/api';
 
 export default function UploadCard({ onUploadSuccess }) {
   const [progress, setProgress] = useState(0);
@@ -34,18 +32,14 @@ export default function UploadCard({ onUploadSuccess }) {
     if (isProcessing && processedId) {
       interval = setInterval(async () => {
         try {
-          const token = localStorage.getItem('token');
-          const response = await axios.get(`${API_BASE_URL}/statements/${processedId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          const status = response.data.status;
+          const response = await getStatement(processedId);
+          const status = response.status;
           setProcessingStatus(status);
           
           if (status === 'SUCCESS' || status === 'FAILED') {
             setIsProcessing(false);
             clearInterval(interval);
-            if (onUploadSuccess) onUploadSuccess(response.data);
+            if (onUploadSuccess) onUploadSuccess(response);
           }
         } catch (error) {
           console.error('Polling error:', error);

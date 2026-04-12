@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Sparkles, BrainCircuit, ShieldAlert, AlertTriangle, Lightbulb, ChevronDown, Wand2, Loader2 } from 'lucide-react';
 import { useStatements } from '../hooks/useStatements';
 import { useInsights, useGenerateInsights } from '../hooks/useInsights';
+import { useToast } from '../hooks/useToast';
 import { SkeletonCard } from '../components/Skeleton';
 import PageWrapper from '../components/PageWrapper';
 import InsightCard from '../components/InsightCard';
@@ -30,6 +31,17 @@ function EmptyState({ onGenerateClick }) {
         <Wand2 className="w-5 h-5 group-hover:rotate-12 transition-transform" />
         Generate Analysis
       </button>
+    </div>
+  );
+}
+
+function StatusNotice({ title, message, accentClass }) {
+  return (
+    <div className="glass-card p-10 text-center border border-white/10">
+      <h3 className={`text-2xl font-bold mb-3 ${accentClass}`}>{title}</h3>
+      <p className="text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
+        {message}
+      </p>
     </div>
   );
 }
@@ -78,6 +90,7 @@ export default function Insights() {
   const [selectedId, setSelectedId] = useState(null);
   const statementsQuery = useStatements();
   const statements = statementsQuery.data || [];
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (statements.length > 0 && !selectedId) {
@@ -86,11 +99,36 @@ export default function Insights() {
   }, [statements, selectedId]);
 
   const insightsQuery = useInsights(selectedId);
-  const insightsList = insightsQuery.data?.insights || [];
+  const insightsList = insightsQuery.data || [];
   const generateMutation = useGenerateInsights();
+
+  const selectedStatement = statements.find((stmt) => stmt.id === selectedId);
+  const isStatementReady = selectedStatement?.status === 'SUCCESS';
+
+  const statusNotice = selectedStatement && !isStatementReady ? {
+    PENDING: {
+      title: 'Statement Queued',
+      message: 'Your statement is queued for processing. Insights will be available once processing completes.',
+      accentClass: 'text-amber-400',
+    },
+    PROCESSING: {
+      title: 'Processing In Progress',
+      message: 'We are parsing transactions and categorizing spending. Please wait a moment.',
+      accentClass: 'text-indigo-400',
+    },
+    FAILED: {
+      title: 'Processing Failed',
+      message: 'We could not process this statement. Please re-upload the file to try again.',
+      accentClass: 'text-rose-400',
+    },
+  }[selectedStatement.status] : null;
 
   const handleGenerate = () => {
     if (!selectedId) return;
+    if (!isStatementReady) {
+      showToast('Statement is not ready yet. Please wait for processing to complete.', 'error');
+      return;
+    }
     generateMutation.mutate(selectedId);
   };
 
@@ -103,6 +141,8 @@ export default function Insights() {
   };
 
   const hasAnyInsights = insightsList.length > 0;
+  const canGenerate = !!selectedId && isStatementReady && !isGenerating;
+  const insightsError = insightsQuery.error?.response?.data?.detail || insightsQuery.error?.message;
 
   return (
     <PageWrapper>
@@ -140,8 +180,8 @@ export default function Insights() {
 
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || !selectedId}
-              className={`premium-button w-full sm:w-auto px-8 py-4 flex items-center justify-center gap-3 text-sm font-black shadow-2xl transition-all ${isGenerating ? 'opacity-70 scale-95 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+              disabled={!canGenerate}
+              className={`premium-button w-full sm:w-auto px-8 py-4 flex items-center justify-center gap-3 text-sm font-black shadow-2xl transition-all ${!canGenerate ? 'opacity-70 scale-95 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
             >
               {isGenerating ? (
                 <>
@@ -166,6 +206,17 @@ export default function Insights() {
               <div key={i} className="glass-card p-6 h-60 animate-pulse bg-white/5" />
             ))}
           </div>
+        ) : insightsQuery.isError ? (
+          <div className="glass-card p-10 text-center border border-rose-500/20">
+            <h3 className="text-xl font-bold text-rose-400 mb-3">Unable to load insights</h3>
+            <p className="text-slate-400 text-sm">{insightsError || 'Please try again shortly.'}</p>
+          </div>
+        ) : statusNotice && !isGenerating ? (
+          <StatusNotice
+            title={statusNotice.title}
+            message={statusNotice.message}
+            accentClass={statusNotice.accentClass}
+          />
         ) : !hasAnyInsights && !isGenerating ? (
           <ScrollReveal>
             <EmptyState onGenerateClick={handleGenerate} />
