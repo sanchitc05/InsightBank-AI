@@ -6,7 +6,7 @@ import { Settings as SettingsIcon, User, Phone, DollarSign, Image as ImageIcon }
 
 export default function Settings() {
   const { user } = useAuth();
-  const { addToast } = useToast();
+  const { showToast } = useToast();
   const [profile, setProfile] = useState({
     full_name: '',
     phone: '',
@@ -15,6 +15,7 @@ export default function Settings() {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState('idle');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -27,16 +28,17 @@ export default function Settings() {
           profile_image_url: data.profile_image_url || ''
         });
       } catch (err) {
-        addToast({ title: 'Error', message: 'Failed to load profile', type: 'error' });
+        showToast('Failed to load profile', 'error');
       } finally {
         setLoading(false);
       }
     };
     fetchProfile();
-  }, [addToast]);
+  }, [showToast]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    setSaveStatus('idle');
     setProfile(prev => ({ ...prev, [name]: value }));
   };
 
@@ -45,9 +47,11 @@ export default function Settings() {
     setIsSaving(true);
     try {
       await updateMe(profile);
-      addToast({ title: 'Success', message: 'Profile updated successfully', type: 'success' });
+      setSaveStatus('success');
+      showToast('Profile updated successfully', 'success');
     } catch (err) {
-      addToast({ title: 'Error', message: 'Failed to update profile', type: 'error' });
+      setSaveStatus('error');
+      showToast('Failed to update profile', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -176,7 +180,24 @@ export default function Settings() {
 
             </div>
 
-            <div className="pt-4 border-t border-[var(--color-border)] flex justify-end">
+            <div className="pt-4 border-t border-[var(--color-border)] flex items-center justify-between gap-4">
+              <p
+                className={`min-h-5 text-sm ${
+                  saveStatus === 'success'
+                    ? 'text-emerald-400'
+                    : saveStatus === 'error'
+                    ? 'text-rose-400'
+                    : 'text-transparent'
+                }`}
+                role="status"
+                aria-live="polite"
+              >
+                {saveStatus === 'success'
+                  ? 'Your changes have been saved.'
+                  : saveStatus === 'error'
+                  ? 'Could not save changes. Please try again.'
+                  : ''}
+              </p>
               <button
                 type="submit"
                 disabled={isSaving}
