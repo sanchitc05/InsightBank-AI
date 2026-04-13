@@ -26,9 +26,19 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    currency: Optional[str] = None
+    profile_image_url: Optional[str] = None
+
 class UserResponse(BaseModel):
     id: int
     email: EmailStr
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    currency: Optional[str] = None
+    profile_image_url: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

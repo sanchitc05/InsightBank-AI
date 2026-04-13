@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, X, Wallet, LogOut, LayoutDashboard, Upload, BarChart3, MessageSquare, Layers } from 'lucide-react';
+import { Menu, X, Wallet, LogOut, LayoutDashboard, Upload, BarChart3, MessageSquare, Layers, Settings } from 'lucide-react';
 
 const NAV_LINKS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { to: '/transactions', label: 'Transactions', icon: BarChart3 },
   { to: '/insights', label: 'Insights', icon: MessageSquare },
   { to: '/compare', label: 'Compare', icon: Layers },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function Navbar() {

@@ -74,6 +74,7 @@ export const registerUser = (userData) => api.post('/auth/register', userData);
 export const logoutUser = () => api.post('/auth/logout');
 export const refreshSession = () => api.post('/auth/refresh');
 export const getMe = () => api.get('/auth/me'); // Optional health check / profile query
+export const updateMe = (userData) => api.put('/auth/me', userData);
 
 // ── Statements ────────────────────────────────
 export const uploadStatement = (file, onProgress) => {

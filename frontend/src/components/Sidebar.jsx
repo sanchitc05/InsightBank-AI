@@ -64,10 +64,18 @@ export default function Sidebar() {
 
       {/* Footer Info / Settings */}
       <div className="p-4 border-t border-white/5 space-y-2">
-        <button className="flex items-center gap-3 w-full px-4 py-3 text-slate-400 hover:text-slate-200 transition-colors">
+        <NavLink 
+          to="/settings"
+          className={({ isActive }) => `
+            flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all duration-300
+            ${isActive 
+              ? 'bg-gradient-to-r from-violet-500/10 to-transparent text-violet-400' 
+              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}
+          `}
+        >
           <Settings className="w-5 h-5" />
           <span className="font-medium">Settings</span>
-        </button>
+        </NavLink>
         <button 
           onClick={logout}
           className="flex items-center gap-3 w-full px-4 py-3 text-rose-400/80 hover:text-rose-400 hover:bg-rose-400/5 rounded-xl transition-all"

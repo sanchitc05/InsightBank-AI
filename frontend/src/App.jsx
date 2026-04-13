@@ -16,6 +16,7 @@ const UploadPage = lazy(() => import('./pages/UploadPage'));
 const TransactionsPage = lazy(() => import('./pages/TransactionsPage'));
 const Insights = lazy(() => import('./pages/Insights'));
 const Compare = lazy(() => import('./pages/Compare'));
+const Settings = lazy(() => import('./pages/Settings'));
 const Login = lazy(() => import('./pages/auth/Login'));
 const Register = lazy(() => import('./pages/auth/Register'));
 const NotFound = lazy(() => import('./pages/NotFound'));
@@ -68,6 +69,7 @@ export default function App() {
                     <Route path="/transactions" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />
                     <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
                     <Route path="/compare" element={<ProtectedRoute><Compare /></ProtectedRoute>} />
+                    <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                     
                     {/* Catch All */}
                     <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />

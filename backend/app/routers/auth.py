@@ -8,7 +8,7 @@ import os
 from app.database import get_db
 from app.models.user import User
 from app.models.security import RevokedToken
-from app.schemas.schemas import UserCreate, UserLogin, UserResponse
+from app.schemas.schemas import UserCreate, UserLogin, UserResponse, UserUpdate
 from app.core.security import (
     get_password_hash,
     verify_password,
@@ -17,6 +17,7 @@ from app.core.security import (
     decode_token,
 )
 from app.core.rate_limit import limiter
+from app.core.dependencies import get_current_user
 
 router = APIRouter()
 
@@ -165,3 +166,27 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     response.delete_cookie(key="access_token", path="/")
     response.delete_cookie(key="refresh_token", path="/api/v1/auth/refresh")
     return {"message": "Logged out"}
+
+
+@router.get("/me", response_model=UserResponse)
+def get_me(current_user: User = Depends(get_current_user)):
+    """Get current user's profile."""
+    return current_user
+
+
+@router.put("/me", response_model=UserResponse)
+def update_me(
+    user_update: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update current user's profile."""
+    update_data = user_update.model_dump(exclude_unset=True)
+    
+    for key, value in update_data.items():
+        setattr(current_user, key, value)
+        
+    db.commit()
+    db.refresh(current_user)
+    
+    return current_user
