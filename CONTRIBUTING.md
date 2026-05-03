@@ -8,7 +8,7 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 - Python 3.10+
 - Node.js 18+
-- MySQL 8.0+
+- PostgreSQL 16+ or Docker
 - Git
 
 ### 1. Fork & Clone

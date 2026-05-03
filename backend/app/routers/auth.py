@@ -136,7 +136,7 @@ def refresh(request: Request, response: Response, db: Session = Depends(get_db))
     # Cleanup task for old revoked tokens
     try:
         # Cleanup expired revoked tokens (e.g., older than 30 days)
-        # Using python datetime for cross-database compatibility (SQLite/MySQL)
+        # Use Python datetime for cross-database compatibility in tests.
         expiry_threshold = datetime.now(timezone.utc) - timedelta(days=30)
         db.execute(
             text("DELETE FROM revoked_tokens WHERE revoked_at < :threshold"),

@@ -13,7 +13,7 @@ visualize financial trends, and generate AI-powered insights.
 Stack:
 - Frontend: React 18 + Vite 5, Recharts, Axios, React Router DOM v6, React Dropzone, Tailwind CSS
 - Backend: Python FastAPI + Uvicorn
-- Database: MySQL 8 with SQLAlchemy 2.0 ORM + Alembic migrations
+- Database: PostgreSQL with SQLAlchemy 2.0 ORM + Alembic migrations
 - PDF Parsing: pdfplumber, camelot-py, PyPDF2
 - Analytics: pandas, numpy, scikit-learn, fuzzywuzzy
 - Base URL for API: http://localhost:8000/api/v1
@@ -26,7 +26,7 @@ Stack:
 
 ```
 PHASE 1 GOAL: Scaffold both the frontend and backend projects with all dependencies
-installed, folder structures created, environment files configured, and the MySQL
+installed, folder structures created, environment files configured, and the PostgreSQL
 database initialized. Nothing should be hardcoded — all secrets go in .env files.
 
 ────────────────────────────────────────────────
@@ -62,14 +62,15 @@ BACKEND TASKS:
 
 2. requirements.txt must include:
    fastapi, uvicorn, pdfplumber, pypdf2, camelot-py, pandas, numpy,
-   sqlalchemy, pymysql, python-dotenv, python-multipart, scikit-learn,
+   sqlalchemy, psycopg[binary], python-dotenv, python-multipart, scikit-learn,
    fuzzywuzzy, alembic
 
 3. .env file structure:
    DB_HOST=localhost
-   DB_PORT=3306
-   DB_USER=root
-   DB_PASS=your_password
+   DB_TYPE=postgresql
+   DB_PORT=5432
+   DB_USER=insightbank
+   DB_PASS=password
    DB_NAME=bank_analyzer
    UPLOAD_DIR=./uploads
 
@@ -79,7 +80,7 @@ BACKEND TASKS:
 5. main.py: Initialize FastAPI app, add CORSMiddleware allowing origin
    http://localhost:5173, include all routers under /api/v1 prefix.
 
-6. schema.sql: Write the full MySQL schema with these four tables:
+6. schema.sql: Write the full PostgreSQL schema with these four tables:
 
    a) statements (id PK, bank_name, account_number, month INT, year INT,
       file_name, uploaded_at DATETIME DEFAULT NOW(), total_credit DECIMAL(12,2),
@@ -147,7 +148,7 @@ Frontend: npm run dev (opens at localhost:5173)
 ```
 PHASE 2 GOAL: Build the complete PDF parsing pipeline — bank detection,
 per-bank parsers, and the upload API endpoint that stores parsed
-transactions into MySQL.
+transactions into PostgreSQL.
 
 ────────────────────────────────────────────────
 BACKEND — parsers/base_parser.py:
@@ -252,7 +253,7 @@ BACKEND — analytics/categorizer.py:
 ────────────────────────────────────────────────
 Create a Categorizer class:
 
-1. Load categories and their keywords from MySQL categories table on init.
+1. Load categories and their keywords from PostgreSQL categories table on init.
 
 2. categorize(description: str) → str
    - Lowercase the description
@@ -689,4 +690,4 @@ B.Tech capstone presentation and demonstration.
 ---
 
 *Bank Statement Analyzer · B.Tech CS · AI & Data Science · Capstone Project*
-*React 18 + Vite 5 · Python FastAPI · MySQL 8 · Generated April 2026*
+*React 18 + Vite 5 · Python FastAPI · PostgreSQL · Generated April 2026*

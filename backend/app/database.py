@@ -1,40 +1,53 @@
 import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
 
 load_dotenv()
 
-# Strict Database Config: MySQL only for production reliability
 def build_database_url():
+    env_url = os.getenv("DATABASE_URL")
+    if env_url:
+        return env_url
+
+    db_type = os.getenv("DB_TYPE", "postgresql").lower()
     db_host = os.getenv("DB_HOST")
     db_port = os.getenv("DB_PORT")
     db_user = os.getenv("DB_USER")
     db_pass = os.getenv("DB_PASS")
     db_name = os.getenv("DB_NAME")
-    
+
     if all([db_host, db_port, db_user, db_pass, db_name]):
-        return f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
-    
-    # Check if we are intentionally using a DATABASE_URL (e.g. for testing)
-    env_url = os.getenv("DATABASE_URL")
-    if env_url:
-        return env_url
+        if db_type in {"postgres", "postgresql"}:
+            return f"postgresql+psycopg://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+        raise RuntimeError(
+            f"Unsupported DB_TYPE '{db_type}'. InsightBank-AI now supports PostgreSQL only."
+        )
 
     raise RuntimeError(
-        "CRITICAL: MySQL configuration is missing. "
-        "Please set DB_HOST, DB_PORT, DB_USER, DB_PASS, and DB_NAME in your .env file. "
-        "SQLite fallback is disabled to prevent silent data loss/fragmentation."
+        "Database configuration is missing. Set DATABASE_URL, or set DB_TYPE=postgresql "
+        "with DB_HOST, DB_PORT, DB_USER, DB_PASS, and DB_NAME."
     )
+
+
+def build_engine_kwargs(database_url: str) -> dict:
+    if database_url.startswith("sqlite"):
+        kwargs = {"connect_args": {"check_same_thread": False}}
+        if database_url in {"sqlite://", "sqlite:///:memory:"}:
+            kwargs["poolclass"] = StaticPool
+        return kwargs
+
+    if database_url.startswith("mysql"):
+        raise RuntimeError("MySQL URLs are no longer supported. Use PostgreSQL.")
+
+    return {"pool_pre_ping": True}
+
 
 DATABASE_URL = build_database_url()
 
-# SQLite needs connect_args={"check_same_thread": False} to be used across threads in FastAPI
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
-)
+engine = create_engine(DATABASE_URL, **build_engine_kwargs(DATABASE_URL))
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

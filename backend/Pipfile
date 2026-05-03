@@ -10,7 +10,7 @@ pypdf2 = "==3.0.1"
 pandas = "==2.2.3"
 numpy = "==1.26.4"
 sqlalchemy = "==2.0.35"
-pymysql = "==1.1.1"
+psycopg = {version = "==3.2.0", extras = ["binary"]}
 python-dotenv = "==1.0.1"
 python-multipart = "==0.0.12"
 scikit-learn = "==1.5.2"

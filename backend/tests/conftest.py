@@ -1,12 +1,12 @@
 import pytest
 import os
 os.environ["TESTING"] = "true"
+os.environ["DATABASE_URL"] = "sqlite://"
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.main import app
-from app.database import Base, get_db
+from app.database import Base, get_db, engine
 # Import all models to ensure they are registered with Base.metadata
 from app.models.user import User
 from app.models.statement import Statement
@@ -15,9 +15,7 @@ from app.models.category import Category
 from app.models.insight import Insight
 from app.models.security import RevokedToken
 
-# Use an in-memory SQLite database for fast, isolated tests
-SQLALCHEMY_DATABASE_URL = "sqlite://"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+# Use the app's explicit in-memory SQLite test engine for fast, isolated tests.
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @pytest.fixture(scope="session", autouse=True)

@@ -53,7 +53,7 @@ Built on a modern, robust, and lightning-fast technology stack.
 
 ### ⚙️ Backend
 - **Framework:** FastAPI (High performance, type-safe)
-- **Database:** MySQL 8.0 with SQLAlchemy 2.0 ORM
+- **Database:** PostgreSQL with SQLAlchemy 2.0 ORM
 - **Data Pipeline:** `pdfplumber` & `pytesseract` (OCR-enabled parsing)
 - **Testing:** `Pytest` (Atomic and functional validation)
 
@@ -66,7 +66,7 @@ Follow these steps to get a local instance of InsightBank-AI up and running.
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- MySQL 8.0+
+- PostgreSQL 16+ or Docker
 - Git
 
 ### 1️⃣ Backend Setup
@@ -83,18 +83,42 @@ python -m venv venv
 # Install dependencies
 pip install -r requirements.txt
 
+# Start PostgreSQL locally with Docker
+docker run --name insightbank-postgres \
+  -e POSTGRES_USER=insightbank \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=bank_analyzer \
+  -p 5432:5432 \
+  -d postgres:16
+
 # Configure environment
 cp .env.example .env
-# Edit .env with your MySQL credentials (DB_HOST, DB_USER, DB_PASS...)
+# Edit DATABASE_URL if your PostgreSQL credentials differ
 
 # Initialize and apply database migrations
 alembic upgrade head
-#(Or manually import: mysql -u root -p < schema.sql)
 
 # Start the FastApi backend
 uvicorn app.main:app --reload
 ```
 *API runs at `http://localhost:8000`. Access Swagger UI at `http://localhost:8000/docs`*
+
+### Database Access
+
+With the Docker example above:
+
+```bash
+psql "postgresql://insightbank:password@localhost:5432/bank_analyzer"
+```
+
+Common checks:
+
+```sql
+\dt
+SELECT COUNT(*) FROM users;
+SELECT COUNT(*) FROM statements;
+SELECT COUNT(*) FROM transactions;
+```
 
 ### 2️⃣ Frontend Setup
 

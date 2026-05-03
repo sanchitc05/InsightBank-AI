@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum
+from sqlalchemy import CheckConstraint, Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -10,14 +10,19 @@ class Insight(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     statement_id = Column(Integer, ForeignKey("statements.id", ondelete="CASCADE"), nullable=False)
-    type = Column(Enum("anomaly", "pattern", "tip", name="insight_type"), nullable=False)
+    type = Column(String(20), nullable=False)
     title = Column(String(120), nullable=False)
     body = Column(Text, nullable=True)
-    severity = Column(Enum("info", "warn", "alert", name="insight_severity"), default="info")
+    severity = Column(String(20), default="info", nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
     # Relationships
     statement = relationship("Statement", back_populates="insights")
+
+    __table_args__ = (
+        CheckConstraint("type IN ('anomaly', 'pattern', 'tip')", name="ck_insights_type"),
+        CheckConstraint("severity IN ('info', 'warn', 'alert')", name="ck_insights_severity"),
+    )
 
     def __repr__(self):
         return f"<Insight [{self.severity}] {self.title[:40]}>"

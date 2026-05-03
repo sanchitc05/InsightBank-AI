@@ -1,88 +1,79 @@
 -- ============================================================
--- Bank Statement Analyzer — MySQL Schema
+-- InsightBank-AI PostgreSQL Schema
+-- Source of truth remains SQLAlchemy models plus Alembic.
+-- Apply the live schema with: alembic upgrade head
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS bank_analyzer
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  hashed_password VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255),
+  phone VARCHAR(50),
+  currency VARCHAR(10) DEFAULT 'INR',
+  profile_image_url VARCHAR(1024),
+  created_at TIMESTAMP DEFAULT now()
+);
 
-USE bank_analyzer;
+CREATE TABLE revoked_tokens (
+  id SERIAL PRIMARY KEY,
+  jti VARCHAR(255) NOT NULL UNIQUE,
+  revoked_at TIMESTAMP DEFAULT now()
+);
 
--- ------------------------------------------------------------
--- 1. Statements
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS statements (
-  id            INT AUTO_INCREMENT PRIMARY KEY,
-  bank_name     VARCHAR(50)    NOT NULL,
-  account_number VARCHAR(30)   NULL,
-  month         INT            NOT NULL,
-  year          INT            NOT NULL,
-  file_name     VARCHAR(255)   NOT NULL,
-  uploaded_at   DATETIME       DEFAULT NOW(),
-  total_credit  DECIMAL(12,2)  DEFAULT 0.00,
-  total_debit   DECIMAL(12,2)  DEFAULT 0.00,
-  UNIQUE KEY uq_statement_period (bank_name, account_number, month, year)
-) ENGINE=InnoDB;
+CREATE TABLE categories (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(50) NOT NULL UNIQUE,
+  keywords JSON,
+  color VARCHAR(10),
+  icon VARCHAR(10)
+);
 
--- ------------------------------------------------------------
--- 2. Transactions
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS transactions (
-  id            INT AUTO_INCREMENT PRIMARY KEY,
-  statement_id  INT            NOT NULL,
-  txn_date      DATE           NULL,
-  description   TEXT           NULL,
-  debit         DECIMAL(12,2)  DEFAULT 0.00,
-  credit        DECIMAL(12,2)  DEFAULT 0.00,
-  balance       DECIMAL(14,2)  DEFAULT 0.00,
-  category      VARCHAR(50)    DEFAULT 'Uncategorized',
-  merchant      VARCHAR(100)   NULL,
-  INDEX idx_txn_date  (txn_date),
-  INDEX idx_category  (category),
-  INDEX idx_stmt_id   (statement_id),
-  CONSTRAINT fk_txn_statement
-    FOREIGN KEY (statement_id) REFERENCES statements(id)
-    ON DELETE CASCADE
-) ENGINE=InnoDB;
+CREATE TABLE statements (
+  id SERIAL PRIMARY KEY,
+  bank_name VARCHAR(50),
+  account_number VARCHAR(30),
+  month INTEGER NOT NULL,
+  year INTEGER NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  uploaded_at TIMESTAMP DEFAULT now(),
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  total_credit NUMERIC(12, 2),
+  total_debit NUMERIC(12, 2),
+  status VARCHAR(20) NOT NULL,
+  error_log VARCHAR(1024),
+  CONSTRAINT ck_statements_status
+    CHECK (status IN ('PENDING', 'PROCESSING', 'SUCCESS', 'FAILED')),
+  CONSTRAINT uq_statement_period
+    UNIQUE (account_number, month, year, user_id)
+);
 
--- ------------------------------------------------------------
--- 3. Categories
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS categories (
-  id       INT AUTO_INCREMENT PRIMARY KEY,
-  name     VARCHAR(50)  NOT NULL UNIQUE,
-  keywords JSON         NULL,
-  color    VARCHAR(10)  NULL,
-  icon     VARCHAR(10)  NULL
-) ENGINE=InnoDB;
+CREATE TABLE transactions (
+  id SERIAL PRIMARY KEY,
+  statement_id INTEGER NOT NULL REFERENCES statements(id) ON DELETE CASCADE,
+  txn_date DATE,
+  description TEXT,
+  debit NUMERIC(12, 2),
+  credit NUMERIC(12, 2),
+  balance NUMERIC(14, 2),
+  category VARCHAR(50),
+  merchant VARCHAR(100)
+);
 
--- ------------------------------------------------------------
--- 4. Insights
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS insights (
-  id            INT AUTO_INCREMENT PRIMARY KEY,
-  statement_id  INT            NOT NULL,
-  type          ENUM('anomaly','pattern','tip') NOT NULL,
-  title         VARCHAR(120)   NOT NULL,
-  body          TEXT           NULL,
-  severity      ENUM('info','warn','alert') DEFAULT 'info',
-  created_at    DATETIME       DEFAULT NOW(),
-  CONSTRAINT fk_insight_statement
-    FOREIGN KEY (statement_id) REFERENCES statements(id)
-    ON DELETE CASCADE
-) ENGINE=InnoDB;
+CREATE INDEX idx_txn_date ON transactions (txn_date);
+CREATE INDEX idx_category ON transactions (category);
+CREATE INDEX idx_statement_id ON transactions (statement_id);
 
--- ------------------------------------------------------------
--- 5. Seed Categories (10 default categories)
--- ------------------------------------------------------------
-INSERT IGNORE INTO categories (name, keywords, color, icon) VALUES
-('Food',          '["swiggy","zomato","restaurant","food","cafe","pizza","burger","dominos","mcdonalds","kfc","dining","eat","biryani","uber eats","dunzo"]', '#FF6B6B', '🍔'),
-('Rent',          '["rent","house rent","rental","landlord","pg","hostel","accommodation"]', '#4ECDC4', '🏠'),
-('Utilities',     '["electricity","water","gas","broadband","internet","wifi","jio","airtel","vodafone","bsnl","dth","tata sky","recharge","bill payment"]', '#45B7D1', '💡'),
-('Shopping',      '["amazon","flipkart","myntra","ajio","meesho","shoppers stop","dmart","reliance","big bazaar","mall","store","purchase","market"]', '#96CEB4', '🛒'),
-('EMI',           '["emi","loan","bajaj","hdfc loan","mortgage","personal loan","car loan","home loan","repayment","installment"]', '#DDA0DD', '🏦'),
-('Salary',        '["salary","wage","payroll","income","stipend","freelance","consulting","payment received","credit salary"]', '#98D8C8', '💰'),
-('Transport',     '["uber","ola","rapido","petrol","diesel","fuel","metro","bus","train","irctc","redbus","parking","toll","fastag","cab"]', '#F7DC6F', '🚗'),
-('Entertainment', '["netflix","hotstar","prime video","spotify","youtube","movie","cinema","pvr","inox","gaming","subscription","book my show"]', '#BB8FCE', '🎬'),
-('Healthcare',    '["hospital","doctor","medical","pharmacy","medicine","apollo","medplus","1mg","practo","health","diagnostic","lab","test"]', '#82E0AA', '🏥'),
-('Education',     '["school","college","university","course","udemy","coursera","tuition","coaching","books","stationery","exam","fees"]', '#85C1E9', '📚');
+CREATE TABLE insights (
+  id SERIAL PRIMARY KEY,
+  statement_id INTEGER NOT NULL REFERENCES statements(id) ON DELETE CASCADE,
+  type VARCHAR(20) NOT NULL,
+  title VARCHAR(120) NOT NULL,
+  body TEXT,
+  severity VARCHAR(20) NOT NULL,
+  created_at TIMESTAMP DEFAULT now(),
+  CONSTRAINT ck_insights_type
+    CHECK (type IN ('anomaly', 'pattern', 'tip')),
+  CONSTRAINT ck_insights_severity
+    CHECK (severity IN ('info', 'warn', 'alert'))
+);

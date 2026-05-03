@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Numeric, UniqueConstraint, ForeignKey
+from sqlalchemy import CheckConstraint, Column, Integer, String, DateTime, Numeric, UniqueConstraint, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -28,6 +28,10 @@ class Statement(Base):
     insights = relationship("Insight", back_populates="statement", cascade="all, delete-orphan")
 
     __table_args__ = (
+        CheckConstraint(
+            "status IN ('PENDING', 'PROCESSING', 'SUCCESS', 'FAILED')",
+            name="ck_statements_status",
+        ),
         UniqueConstraint("account_number", "month", "year", "user_id", name="uq_statement_period"),
     )
 
