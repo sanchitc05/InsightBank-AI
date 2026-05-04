@@ -61,78 +61,70 @@ Built on a modern, robust, and lightning-fast technology stack.
 
 ## 🚀 Getting Started
 
-Follow these steps to get a local instance of InsightBank-AI up and running.
+Quick, copy-paste steps to run the project locally.
 
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- PostgreSQL 16+ or Docker
+- Docker (recommended for PostgreSQL) or a local PostgreSQL 16+
 - Git
 
-### 1️⃣ Backend Setup
+### One-time backend setup
+Run these once to prepare the backend and database schema.
 
-```bash
-# Clone the repository and navigate to backend
+```powershell
 cd backend
-
-# Create and activate a virtual environment
 python -m venv venv
-# On Windows: .\venv\Scripts\Activate.ps1
-# On macOS/Linux: source venv/bin/activate
-
-# Install dependencies
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
-# Start PostgreSQL locally with Docker
-docker run --name insightbank-postgres \
-  -e POSTGRES_USER=insightbank \
-  -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=bank_analyzer \
-  -p 5432:5432 \
-  -d postgres:16
-
-# Configure environment
-cp .env.example .env
-# Edit DATABASE_URL if your PostgreSQL credentials differ
-
-# Initialize and apply database migrations
+Copy-Item .env.example .env -Force
 alembic upgrade head
-
-# Start the FastApi backend
-uvicorn app.main:app --reload
-```
-*API runs at `http://localhost:8000`. Access Swagger UI at `http://localhost:8000/docs`*
-
-### Database Access
-
-With the Docker example above:
-
-```bash
-psql "postgresql://insightbank:password@localhost:5432/bank_analyzer"
 ```
 
-Common checks:
+### Run the app (every time)
 
-```sql
-\dt
-SELECT COUNT(*) FROM users;
-SELECT COUNT(*) FROM statements;
-SELECT COUNT(*) FROM transactions;
+1) Start PostgreSQL (Docker):
+
+```powershell
+docker run --name insightbank-postgres `
+  -e POSTGRES_USER=insightbank `
+  -e POSTGRES_PASSWORD=password `
+  -e POSTGRES_DB=bank_analyzer `
+  -p 5432:5432 -d postgres:16
+# if container already exists: docker start insightbank-postgres
 ```
 
-### 2️⃣ Frontend Setup
+2) Start backend (new terminal):
 
-```bash
-# Open a new terminal and navigate to frontend
+```powershell
+cd backend
+.\venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+3) Start frontend (separate terminal):
+
+```powershell
 cd frontend
-
-# Install Node modules
-npm install
-
-# Start the Vite development server
+npm install       # only needed when deps change
 npm run dev
 ```
-*App is live at `http://localhost:5173`*
+
+Access:
+- Backend API: http://localhost:8000 (Swagger: /docs)
+- Frontend: http://localhost:5173
+
+### Stop / cleanup
+
+```powershell
+# stop frontend/backend processes (Ctrl+C in each terminal)
+docker stop insightbank-postgres
+# to remove the container: docker rm insightbank-postgres
+```
+
+Notes:
+- If your database URL differs, update `DATABASE_URL` in `backend/.env`.
+- Use `docker start insightbank-postgres` instead of `docker run` when the container already exists.
 
 ---
 
