@@ -4,32 +4,30 @@ import * as api from '../services/api';
 /**
  * Hook for dashboard summary statistics
  */
-export const useDashboardSummary = (id) => {
+export const useDashboardSummary = (selectedMonth) => {
   return useQuery({
-    queryKey: ['dashboard-summary', id],
-    queryFn: ({ signal }) => api.fetchDashboardSummary(id, signal),
-    enabled: !!id,
+    queryKey: ['dashboard-summary', selectedMonth ?? 'all'],
+    queryFn: ({ signal }) => api.fetchDashboardSummary(selectedMonth, signal),
   });
 };
 
 /**
  * Hook for category breakdown chart
  */
-export const useCategoryBreakdown = (id) => {
+export const useCategoryBreakdown = (selectedMonth) => {
   return useQuery({
-    queryKey: ['category-breakdown', id],
-    queryFn: ({ signal }) => api.fetchCategoryBreakdown(id, signal),
-    enabled: !!id,
+    queryKey: ['category-breakdown', selectedMonth ?? 'all'],
+    queryFn: ({ signal }) => api.fetchCategoryBreakdown(selectedMonth, signal),
   });
 };
 
 /**
  * Hook for monthly trends chart
  */
-export const useMonthlyTrends = () => {
+export const useMonthlyTrends = (selectedMonth) => {
   return useQuery({
-    queryKey: ['monthly-trends'],
-    queryFn: ({ signal }) => api.fetchMonthlyTrends(signal),
+    queryKey: ['monthly-trends', selectedMonth ?? 'all'],
+    queryFn: ({ signal }) => api.fetchMonthlyTrends(selectedMonth, signal),
   });
 };
 

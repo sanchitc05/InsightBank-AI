@@ -21,7 +21,7 @@ export default function IncomeExpenseBar({ data = [] }) {
   if (!data || data.length === 0) {
     return (
       <div className="glass-card p-8 text-center" style={{ height: '340px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: 'var(--text-muted)' }}>No trend data available</p>
+        <p style={{ color: 'var(--text-muted)' }}>No trend data available for this period</p>
       </div>
     );
   }

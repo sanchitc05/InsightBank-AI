@@ -31,6 +31,9 @@ export const useUploadStatement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['statements'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['category-breakdown'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-trends'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-transactions'] });
       showToast('Statement uploaded successfully', 'success');
     },
     onError: (error) => {
@@ -53,6 +56,9 @@ export const useDeleteStatement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['statements'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['category-breakdown'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-trends'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       showToast('Statement deleted successfully', 'success');
     },

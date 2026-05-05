@@ -11,3 +11,11 @@ export const useTransactions = (params) => {
     placeholderData: (previousData) => previousData,
   });
 };
+
+export const useDashboardTransactions = (selectedMonth) => {
+  return useQuery({
+    queryKey: ['dashboard-transactions', selectedMonth ?? 'all'],
+    queryFn: ({ signal }) => api.fetchDashboardTransactions(selectedMonth, signal),
+    placeholderData: (previousData) => previousData,
+  });
+};

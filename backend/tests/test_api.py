@@ -27,7 +27,7 @@ def test_upload_invalid_file_type(client):
     files = {"file": ("test.txt", b"not a pdf", "text/plain")}
     response = client.post("/api/v1/statements/upload", files=files)
     assert response.status_code == 400
-    assert "Only PDF files are accepted" in response.json()["detail"]
+    assert "Only PDF and CSV files are accepted" in response.json()["detail"]
 
 @pytest.mark.asyncio
 async def test_get_transactions_no_data(client):
@@ -42,7 +42,12 @@ def test_upload_parsing_failure(client):
     files = {"file": ("empty.pdf", b"%PDF-1.4\n1 0 obj\n<<\n/Title (Test)\n>>\nendobj\ntrailer\n<<\n/Root 1 0 R\n>>\n%%EOF", "application/pdf")}
     response = client.post("/api/v1/statements/upload", files=files)
     
-    # It should fail with 422 because it cannot detect a bank or find transactions
-    assert response.status_code == 422
-    assert "detail" in response.json()
-    assert "parser" in response.json()
+    # Upload returns a pending statement immediately; background processing marks it failed.
+    assert response.status_code == 200
+    payload = response.json()
+    assert "statement_id" in payload
+
+    statements = client.get("/api/v1/statements")
+    assert statements.status_code == 200
+    assert len(statements.json()) == 1
+    assert statements.json()[0]["status"] == "FAILED"

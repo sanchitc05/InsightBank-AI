@@ -105,10 +105,17 @@ class TransactionResponse(TransactionBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class TransactionSummary(BaseModel):
+    total_debit: float
+    total_credit: float
+
+
 class TransactionListResponse(BaseModel):
+    period: str = "all-time"
     total: int
     page: int
     page_size: int
+    summary: Optional[TransactionSummary] = None
     data: List[TransactionResponse]
 
 
@@ -150,6 +157,7 @@ class InsightGenerateResponse(BaseModel):
 # ── Analytics Schemas ──────────────────────────────────────
 
 class AnalyticsSummary(BaseModel):
+    period: str = "all-time"
     total_income: float
     total_expense: float
     savings: float
@@ -173,10 +181,26 @@ class CategoryBreakdown(BaseModel):
 class TrendPoint(BaseModel):
     month: int
     year: int
+    period: str
     label: str
     total_income: float
     total_expense: float
     savings: float
+
+
+class CategoryBreakdownResponse(BaseModel):
+    period: str
+    data: List[CategoryBreakdown]
+
+
+class TrendResponse(BaseModel):
+    period: str
+    data: List[TrendPoint]
+
+
+class InsightListResponse(BaseModel):
+    period: str
+    insights: List[InsightResponse]
 
 
 class CompareResponse(BaseModel):

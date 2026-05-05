@@ -1,6 +1,7 @@
 from datetime import date
 
 from app.models.user import User
+from app.models.insight import Insight
 from app.models.statement import Statement
 from app.models.transaction import Transaction
 
@@ -55,6 +56,19 @@ def add_transactions(db_session, statement_id, rows):
             merchant=row.get("merchant"),
         )
         db_session.add(txn)
+    db_session.commit()
+
+
+def add_insights(db_session, statement_id, rows):
+    for row in rows:
+        insight = Insight(
+            statement_id=statement_id,
+            type=row["type"],
+            title=row["title"],
+            body=row.get("body"),
+            severity=row.get("severity", "info"),
+        )
+        db_session.add(insight)
     db_session.commit()
 
 
@@ -197,3 +211,133 @@ def test_compare_response_shape(client, db_session):
     category_entry = category_list[0]
     for key in ["category", "total", "count", "percentage"]:
         assert key in category_entry
+
+
+def test_aggregate_analytics_endpoints_support_all_time_and_month_filters(client, db_session):
+    email = "insights_aggregate@example.com"
+    register_and_login(client, email)
+    user_id = get_user_id(db_session, email)
+
+    march_stmt = create_statement(db_session, user_id, month=3, year=2026, account_number="ACCT-101")
+    april_stmt = create_statement(db_session, user_id, month=4, year=2026, account_number="ACCT-102")
+
+    add_transactions(
+        db_session,
+        march_stmt.id,
+        [
+            {
+                "txn_date": date(2026, 3, 2),
+                "description": "Salary credit",
+                "credit": 5000.0,
+                "balance": 5000.0,
+                "category": "Salary",
+                "merchant": "Employer",
+            },
+            {
+                "txn_date": date(2026, 3, 4),
+                "description": "Rent payment",
+                "debit": 1200.0,
+                "balance": 3800.0,
+                "category": "Rent",
+                "merchant": "Landlord",
+            },
+            {
+                "txn_date": date(2026, 3, 10),
+                "description": "Groceries",
+                "debit": 300.0,
+                "balance": 3500.0,
+                "category": "Food",
+                "merchant": "Market",
+            },
+        ],
+    )
+    add_transactions(
+        db_session,
+        april_stmt.id,
+        [
+            {
+                "txn_date": date(2026, 4, 1),
+                "description": "Salary credit",
+                "credit": 4000.0,
+                "balance": 7500.0,
+                "category": "Salary",
+                "merchant": "Employer",
+            },
+            {
+                "txn_date": date(2026, 4, 6),
+                "description": "Fuel",
+                "debit": 500.0,
+                "balance": 7000.0,
+                "category": "Transport",
+                "merchant": "Fuel Station",
+            },
+        ],
+    )
+    add_insights(
+        db_session,
+        march_stmt.id,
+        [{"type": "tip", "title": "March alert", "severity": "alert"}],
+    )
+    add_insights(
+        db_session,
+        april_stmt.id,
+        [{"type": "pattern", "title": "April note", "severity": "info"}],
+    )
+
+    summary_all = client.get("/api/v1/analytics/summary")
+    assert summary_all.status_code == 200
+    summary_payload = summary_all.json()
+    assert summary_payload["period"] == "all-time"
+    assert summary_payload["total_income"] == 9000.0
+    assert summary_payload["total_expense"] == 2000.0
+    assert summary_payload["savings"] == 7000.0
+    assert summary_payload["transaction_count"] == 5
+    assert summary_payload["top_category"] == "Rent"
+    assert summary_payload["daily_avg_spend"] == 32.79
+
+    summary_march = client.get("/api/v1/analytics/summary", params={"month": "2026-03"})
+    assert summary_march.status_code == 200
+    march_summary_payload = summary_march.json()
+    assert march_summary_payload["period"] == "2026-03"
+    assert march_summary_payload["total_income"] == 5000.0
+    assert march_summary_payload["total_expense"] == 1500.0
+    assert march_summary_payload["savings"] == 3500.0
+
+    categories_all = client.get("/api/v1/analytics/categories")
+    assert categories_all.status_code == 200
+    categories_payload = categories_all.json()
+    assert categories_payload["period"] == "all-time"
+    assert categories_payload["data"][0]["category"] == "Rent"
+    assert categories_payload["data"][0]["total"] == 1200.0
+
+    trend_all = client.get("/api/v1/analytics/trend")
+    assert trend_all.status_code == 200
+    trend_payload = trend_all.json()
+    assert trend_payload["period"] == "all-time"
+    assert len(trend_payload["data"]) == 2
+    assert trend_payload["data"][0]["period"] == "2026-03"
+    assert trend_payload["data"][1]["period"] == "2026-04"
+
+    transactions_march = client.get("/api/v1/transactions", params={"month": "2026-03", "page_size": 200})
+    assert transactions_march.status_code == 200
+    transactions_payload = transactions_march.json()
+    assert transactions_payload["period"] == "2026-03"
+    assert transactions_payload["total"] == 3
+    assert transactions_payload["summary"]["total_debit"] == 1500.0
+    assert transactions_payload["summary"]["total_credit"] == 5000.0
+
+    insights_march = client.get("/api/v1/insights", params={"month": "2026-03"})
+    assert insights_march.status_code == 200
+    insights_payload = insights_march.json()
+    assert insights_payload["period"] == "2026-03"
+    assert len(insights_payload["insights"]) == 1
+    assert insights_payload["insights"][0]["title"] == "March alert"
+
+
+def test_aggregate_endpoints_reject_invalid_month_filter(client, db_session):
+    email = "insights_invalid_month@example.com"
+    register_and_login(client, email)
+
+    response = client.get("/api/v1/analytics/summary", params={"month": "2026-13"})
+    assert response.status_code == 422
+    assert "Invalid month format" in response.json()["detail"]

@@ -36,7 +36,7 @@ export default function CategoryPie({ data = [] }) {
   if (!data || data.length === 0) {
     return (
       <div className="glass-card p-8 text-center" style={{ height: '340px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: 'var(--text-muted)' }}>No expense data for this statement</p>
+        <p style={{ color: 'var(--text-muted)' }}>No expense data available for this period</p>
       </div>
     );
   }

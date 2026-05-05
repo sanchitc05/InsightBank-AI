@@ -109,10 +109,56 @@ export const getTransactions = (params, signal) => {
   return api.get('/transactions', { params, signal: s });
 };
 
+export const getDashboardTransactions = async (month, signal) => {
+  const s = signal?.signal || signal;
+  const pageSize = 200;
+  const params = month ? { month } : {};
+  let page = 1;
+  let total = 0;
+  let period = month || 'all-time';
+  let summary = { total_debit: 0, total_credit: 0 };
+  const data = [];
+
+  while (true) {
+    const response = await api.get('/transactions', {
+      params: { ...params, page, page_size: pageSize },
+      signal: s,
+    });
+
+    total = response.total ?? total;
+    period = response.period ?? period;
+    summary = response.summary ?? summary;
+    data.push(...(response.data || []));
+
+    if (!response.data?.length || response.data.length < pageSize || data.length >= total) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return {
+    total,
+    page: 1,
+    page_size: data.length,
+    period,
+    summary,
+    data,
+  };
+};
+
 // ── Analytics ─────────────────────────────────
 export const getAnalyticsSummary = (id, signal) => {
   const s = signal?.signal || signal;
   return api.get(`/analytics/summary/${id}`, { signal: s });
+};
+
+export const getDashboardSummary = (month, signal) => {
+  const s = signal?.signal || signal;
+  return api.get('/analytics/summary', {
+    params: month ? { month } : undefined,
+    signal: s,
+  });
 };
 
 export const getCategories = (id, signal) => {
@@ -120,9 +166,20 @@ export const getCategories = (id, signal) => {
   return api.get(`/analytics/categories/${id}`, { signal: s });
 };
 
-export const getTrend = (signal) => {
+export const getDashboardCategories = (month, signal) => {
   const s = signal?.signal || signal;
-  return api.get('/analytics/trend', { signal: s });
+  return api.get('/analytics/categories', {
+    params: month ? { month } : undefined,
+    signal: s,
+  });
+};
+
+export const getTrend = (month, signal) => {
+  const s = signal?.signal || signal;
+  return api.get('/analytics/trend', {
+    params: month ? { month } : undefined,
+    signal: s,
+  });
 };
 
 export const getCompare = (id1, id2, signal) => {
@@ -142,8 +199,9 @@ export const generateInsights = (id) =>
 // ── Aliases ───────────────────────────────────
 export const fetchStatements = getStatements;
 export const fetchTransactions = getTransactions;
-export const fetchDashboardSummary = getAnalyticsSummary;
-export const fetchCategoryBreakdown = getCategories;
+export const fetchDashboardTransactions = getDashboardTransactions;
+export const fetchDashboardSummary = getDashboardSummary;
+export const fetchCategoryBreakdown = getDashboardCategories;
 export const fetchMonthlyTrends = getTrend;
 export const fetchCategoryComparison = getCompare;
 export const fetchInsights = getInsights;

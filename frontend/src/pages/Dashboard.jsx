@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   TrendingUp, 
@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useStatements } from '../hooks/useStatements';
 import { useDashboardSummary, useCategoryBreakdown, useMonthlyTrends } from '../hooks/useAnalytics';
-import { useTransactions } from '../hooks/useTransactions';
+import { useDashboardTransactions } from '../hooks/useTransactions';
 import { formatINR } from '../utils/format';
 import { SkeletonBox } from '../components/Skeleton';
 import ErrorBanner from '../components/ErrorBanner';
@@ -96,30 +96,46 @@ function MerchantItem({ name, total, percentage, color, maxAmount }) {
   );
 }
 
+function getMonthKey(statement) {
+  return `${statement.year}-${String(statement.month).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(monthKey) {
+  const [year, month] = monthKey.split('-').map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString('en-IN', {
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(null);
 
   const statementsQuery = useStatements();
   const statements = statementsQuery.data || [];
-
-  useEffect(() => {
-    if (statements.length > 0 && selectedId === null) {
-      setSelectedId(statements[0].id);
-    }
+  const availableMonths = useMemo(() => {
+    const seen = new Set();
+    return statements.reduce((months, statement) => {
+      const monthKey = getMonthKey(statement);
+      if (!seen.has(monthKey)) {
+        seen.add(monthKey);
+        months.push(monthKey);
+      }
+      return months;
+    }, []);
   }, [statements]);
 
-  const summaryQuery = useDashboardSummary(selectedId);
-  const categoriesQuery = useCategoryBreakdown(selectedId);
-  const trendQuery = useMonthlyTrends();
-  const transactionsQuery = useTransactions(
-    selectedId ? { statement_id: selectedId, page_size: 200 } : null
-  );
+  const summaryQuery = useDashboardSummary(selectedMonth);
+  const categoriesQuery = useCategoryBreakdown(selectedMonth);
+  const trendQuery = useMonthlyTrends(selectedMonth);
+  const transactionsQuery = useDashboardTransactions(selectedMonth);
 
-  const summary = summaryQuery.data || {};
-  const categoryData = categoriesQuery.data || [];
-  const trendData = trendQuery.data || [];
+  const summary = summaryQuery.data || { period: 'all-time' };
+  const categoryData = categoriesQuery.data?.data || [];
+  const trendData = trendQuery.data?.data || [];
   const transactions = transactionsQuery.data?.data || [];
+  const isAllView = selectedMonth === null;
 
   // Data Memos
   const balanceData = useMemo(() => {
@@ -213,17 +229,27 @@ export default function Dashboard() {
           </div>
           
           <div className="flex flex-wrap gap-2 p-1 bg-white/5 rounded-2xl border border-white/5">
-            {statements.map((stmt) => (
+            <button
+              onClick={() => setSelectedMonth(null)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${
+                isAllView
+                  ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+              }`}
+            >
+              All
+            </button>
+            {availableMonths.map((monthKey) => (
               <button
-                key={stmt.id}
-                onClick={() => setSelectedId(stmt.id)}
+                key={monthKey}
+                onClick={() => setSelectedMonth(monthKey)}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${
-                  selectedId === stmt.id 
+                  selectedMonth === monthKey
                     ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' 
                     : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                 }`}
               >
-                {new Date(stmt.year, stmt.month - 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                {formatMonthLabel(monthKey)}
               </button>
             ))}
           </div>
@@ -241,7 +267,7 @@ export default function Dashboard() {
                   value={formatINR(summary.total_income)}
                   icon={ArrowUpRight}
                   colorClass="text-emerald-400"
-                  sublabel="Direct Deposits & Transfers"
+                  sublabel={isAllView ? 'Income Across All Uploaded Months' : 'Direct Deposits & Transfers'}
                 />
               </ScrollReveal>
               <ScrollReveal delay={200} className="h-full">
@@ -250,7 +276,7 @@ export default function Dashboard() {
                   value={formatINR(summary.total_expense)}
                   icon={ArrowDownRight}
                   colorClass="text-rose-400"
-                  sublabel="Monthly Spending Flow"
+                  sublabel={isAllView ? 'Spending Across All Uploaded Months' : 'Monthly Spending Flow'}
                 />
               </ScrollReveal>
               <ScrollReveal delay={300} className="h-full">
@@ -259,7 +285,7 @@ export default function Dashboard() {
                   value={formatINR(summary.savings)}
                   icon={Wallet}
                   colorClass="text-indigo-400"
-                  sublabel={`${summary.savings_rate?.toFixed(1) || '0'}% Savings Rate`}
+                  sublabel={isAllView ? 'All-time Savings Rate' : `${summary.savings_rate?.toFixed(1) || '0'}% Savings Rate`}
                 />
               </ScrollReveal>
               <ScrollReveal delay={400} className="h-full">
